@@ -15,42 +15,32 @@ CJK_REGEX = re.compile(r'[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]')
 def is_valid_japanese_dialogue(text: str) -> bool:
     """
     Filters out OCR noise, English web text, code snippets, and UI hallucination symbols.
-    Ensures that only real Japanese sentences (dialogue, narration, options) trigger translation.
+    Ensures that real Japanese dialogue, menus, choices, and narration trigger translation.
     """
     cleaned = text.strip()
-    if len(cleaned) < 2:
+    if not cleaned:
         return False
 
-    # Remove non-alphanumeric punctuation for ratio testing
-    pure_chars = re.sub(r'[^\w\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]', '', cleaned)
-    if len(pure_chars) < 2:
-        return False
-
-    # Count actual CJK characters (Hiragana, Katakana, Kanji)
-    cjk_chars = CJK_REGEX.findall(pure_chars)
+    # Extract all CJK characters (Hiragana, Katakana, Kanji)
+    cjk_chars = CJK_REGEX.findall(cleaned)
     cjk_count = len(cjk_chars)
 
-    # Must contain at least 2 CJK characters
-    if cjk_count < 2:
+    # Must contain at least 1 CJK character
+    if cjk_count == 0:
         return False
 
-    # Filter out English sentences with incidental CJK characters (e.g. "Jisho ... 日 ...")
-    latin_count = len(re.findall(r'[a-zA-Z]', pure_chars))
+    # Count Latin letters
+    latin_count = len(re.findall(r'[a-zA-Z]', cleaned))
+
+    # Reject if dominantly English (e.g. English web paragraph or code with incidental CJK character)
     if latin_count > cjk_count:
         return False
 
-    # Filter out common Tesseract hallucination symbols on dark/empty backgrounds
-    # e.g. "ロ・ooミぶっmnエーエ恒"
-    if 'ロ' in pure_chars or pure_chars.count('二') >= 2:
+    # Reject common dark-mode Tesseract box artifacts (e.g. "ロ・ooミぶっmnエーエ")
+    if 'ロ' in cleaned and cleaned.count('ロ') >= 2:
         return False
 
-    # Filter out any string containing mixed lowercase latin letters interspersed with kana
-    if latin_count > 0:
-        return False
-
-    # High CJK density requirement (at least 75% of alphanumeric characters must be CJK)
-    cjk_ratio = cjk_count / len(pure_chars)
-    return cjk_ratio >= 0.75
+    return True
 
 
 @dataclass
