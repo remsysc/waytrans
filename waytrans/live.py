@@ -22,6 +22,7 @@ from waytrans.capture import (
     CaptureError
 )
 from waytrans.ocr import extract_text_lines_with_boxes
+from waytrans.layout import cluster_text_lines, compute_smart_placement, is_valid_japanese_dialogue
 from waytrans.translator import batch_translate_texts, _TRANSLATION_CACHE
 from waytrans.overlay import has_layer_shell_support, notify_fallback
 
@@ -265,31 +266,41 @@ class LiveTranslator:
     def update_subtitles_on_main_thread(self, items_to_render: List[Dict[str, any]]) -> None:
         """
         Runs on the GTK main thread via GLib.idle_add.
-        Clears old widgets and renders new floating subtitle labels.
+        Clears old widgets and renders smart, dynamically scaled floating subtitles.
         """
         import gi
-        from gi.repository import Gtk
+        from gi.repository import Gtk, Pango
 
         for widget in self.active_widgets:
             self.container.remove(widget)
         self.active_widgets.clear()
 
-        scan_offset_x = self.scan_x - self.screen_x
-        scan_offset_y = self.scan_y - self.screen_y
-
         for item in items_to_render:
             trans = item["trans"]
-            label = Gtk.Label(label=trans)
-            label.get_style_context().add_class("hud-subtitle")
-            label.set_xalign(0.0)
-            label.set_line_wrap(True)
-            label.set_max_width_chars(60)
-            label.set_selectable(False)
+            pos_x = item["pos_x"]
+            pos_y = item["pos_y"]
+            font_size = item["font_size"]
+            max_width = item["max_width"]
 
-            # Position directly floating above the detected Japanese dialogue line
-            pos_x = scan_offset_x + item["left"]
-            pos_y = scan_offset_y + item["top"] - max(int(item["height"] * 0.9), 24)
-            pos_y = max(pos_y, 0)
+            label = Gtk.Label()
+            label.get_style_context().add_class("hud-subtitle")
+            label.set_line_wrap(True)
+            label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            label.set_justify(Gtk.Justification.CENTER)
+            label.set_xalign(0.5)
+            label.set_selectable(False)
+            label.set_size_request(max_width, -1)
+
+            # Pango markup for crisp proportional typography
+            # Escape XML entities in translation
+            escaped = (
+                trans.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
+            pango_size = font_size * 1024
+            markup = f'<span font_family="Noto Sans CJK JP, Maple Mono NF CN, Sans" font_weight="bold" font_size="{pango_size}">{escaped}</span>'
+            label.set_markup(markup)
 
             self.container.put(label, pos_x, pos_y)
             self.active_widgets.append(label)
@@ -335,44 +346,65 @@ class LiveTranslator:
 
                 # Filter lines: only process lines that actually contain CJK characters for Japanese mode
                 if self.source_lang.lower() in ("ja", "jp", "jpn"):
-                    boxes = [b for b in boxes if CJK_REGEX.search(b["text"])]
+                    boxes = [b for b in boxes if is_valid_japanese_dialogue(b["text"])]
 
-                current_text_signature = "|".join(b["text"] for b in boxes)
+                # 4. Cluster text fragments into coherent dialogue blocks
+                dialogue_blocks = cluster_text_lines(boxes)
+
+                if self.source_lang.lower() in ("ja", "jp", "jpn"):
+                    dialogue_blocks = [b for b in dialogue_blocks if is_valid_japanese_dialogue(b.combined_text)]
+
+                current_text_signature = "|".join(b.combined_text for b in dialogue_blocks)
                 if current_text_signature == self.last_text_hash:
                     time.sleep(self.interval_sec)
                     continue
 
                 self.last_text_hash = current_text_signature
 
-                # If no Japanese text remains on screen, clear subtitles immediately
-                if not boxes:
+                # If no dialogue remains on screen, clear subtitles immediately
+                if not dialogue_blocks:
                     GLib.idle_add(self.update_subtitles_on_main_thread, [])
                     time.sleep(self.interval_sec)
                     continue
 
-                # 4. Batch translate all detected text lines
-                raw_texts = [b["text"] for b in boxes]
+                # 5. Batch translate coherent dialogue blocks
+                raw_texts = [b.combined_text for b in dialogue_blocks]
                 translated_lines = batch_translate_texts(
                     raw_texts,
                     source_lang=self.source_lang,
                     target_lang=self.target_lang
                 )
 
+                # 6. Compute smart placement coordinates and dynamic font sizes
+                scan_offset_x = self.scan_x - self.screen_x
+                scan_offset_y = self.scan_y - self.screen_y
+
                 items_to_render = []
-                for b, trans in zip(boxes, translated_lines):
-                    if trans and trans.strip():
-                        items_to_render.append({
-                            "left": b["left"],
-                            "top": b["top"],
-                            "height": b["height"],
-                            "width": b["width"],
-                            "trans": trans
-                        })
+                for block, trans in zip(dialogue_blocks, translated_lines):
+                    if not trans or not trans.strip():
+                        continue
+
+                    pos_x, pos_y, font_size, max_w = compute_smart_placement(
+                        block=block,
+                        translated_text=trans,
+                        viewport_width=self.screen_w,
+                        viewport_height=self.screen_h,
+                        scan_offset_x=scan_offset_x,
+                        scan_offset_y=scan_offset_y
+                    )
+
+                    items_to_render.append({
+                        "pos_x": pos_x,
+                        "pos_y": pos_y,
+                        "font_size": font_size,
+                        "max_width": max_w,
+                        "trans": trans
+                    })
 
                 # Schedule UI update on GTK main loop
                 GLib.idle_add(self.update_subtitles_on_main_thread, items_to_render)
 
-                # 5. Copy dialogue to clipboard if enabled
+                # 7. Copy newest dialogue to clipboard if enabled
                 if self.copy_clipboard and translated_lines:
                     full_text = "\n".join(t for t in translated_lines if t.strip())
                     if full_text:
