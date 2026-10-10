@@ -1,16 +1,18 @@
 """
 Live dynamic screen translation module for Wayland ("Game HUD Mode").
-Continuously monitors a screen or window region, extracts Japanese text,
-and renders containerless, game-native floating subtitles directly above original dialogue.
+Continuously monitors a screen or window region in a background worker,
+extracts Japanese text, and renders containerless, game-native floating subtitles
+directly above original dialogue in real-time.
 """
 
-import hashlib
-import json
 import os
+import re
 import signal
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from typing import Dict, List, Optional, Tuple
 
 from waytrans.capture import (
@@ -24,6 +26,9 @@ from waytrans.translator import batch_translate_texts, _TRANSLATION_CACHE
 from waytrans.overlay import has_layer_shell_support, notify_fallback
 
 PID_FILE = os.path.expanduser("~/.cache/waytrans/live.pid")
+
+# Regex to detect Japanese / CJK characters (Hiragana, Katakana, Kanji)
+CJK_REGEX = re.compile(r'[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]')
 
 
 def get_pid_file() -> str:
@@ -74,21 +79,33 @@ def stop_live() -> bool:
     return True
 
 
-def compute_image_hash(image_path: str) -> str:
-    """Computes a fast perceptual hash (aHash) or MD5."""
+def get_image_signature(image_path: str) -> Optional[bytes]:
+    """
+    Computes a sensitive 64x64 grayscale byte thumbnail.
+    Accurately detects dialogue text updates on high-resolution screens.
+    """
     try:
         from PIL import Image
         with Image.open(image_path) as img:
-            thumb = img.convert('L').resize((16, 16), Image.Resampling.BILINEAR)
-            pixels = list(thumb.getdata())
-            avg = sum(pixels) / max(len(pixels), 1)
-            bits = "".join("1" if p > avg else "0" for p in pixels)
-            return hex(int(bits, 2))
+            thumb = img.convert('L').resize((64, 64), Image.Resampling.BILINEAR)
+            return thumb.tobytes()
     except Exception:
-        hasher = hashlib.md5()
-        with open(image_path, "rb") as f:
-            hasher.update(f.read())
-        return hasher.hexdigest()
+        return None
+
+
+def has_significant_change(prev_bytes: Optional[bytes], curr_bytes: Optional[bytes], threshold: int = 150) -> bool:
+    """
+    Returns True if screen pixels changed enough to warrant OCR.
+    Threshold of 150 across 4096 pixels easily catches single-character dialogue changes
+    while ignoring sub-pixel video rendering noise.
+    """
+    if prev_bytes is None or curr_bytes is None:
+        return True
+    if len(prev_bytes) != len(curr_bytes):
+        return True
+
+    diff_score = sum(abs(a - b) for a, b in zip(prev_bytes, curr_bytes))
+    return diff_score > threshold
 
 
 class LiveTranslator:
@@ -103,7 +120,7 @@ class LiveTranslator:
         h: int,
         source_lang: str = "ja",
         target_lang: str = "en",
-        interval_ms: int = 500,
+        interval_ms: int = 400,
         psm: int = 6,
         copy_clipboard: bool = True,
         fullscreen: bool = True,
@@ -133,13 +150,16 @@ class LiveTranslator:
         self.scan_geometry = f"{self.scan_x},{self.scan_y} {self.scan_w}x{self.scan_h}"
         self.source_lang = source_lang
         self.target_lang = target_lang
-        self.interval_ms = interval_ms
+        self.interval_sec = max(interval_ms / 1000.0, 0.25)
         self.psm = psm
         self.copy_clipboard = copy_clipboard
 
-        self.last_img_hash = ""
+        self.last_img_bytes: Optional[bytes] = None
         self.last_text_hash = ""
         self.tmp_img = tempfile.mktemp(suffix=".png", prefix="waytrans_live_")
+
+        self.running = False
+        self.worker_thread = None
 
         self.window = None
         self.container = None
@@ -147,6 +167,7 @@ class LiveTranslator:
 
     def cleanup(self) -> None:
         """Clean up temporary files and PID file."""
+        self.running = False
         if os.path.exists(self.tmp_img):
             try:
                 os.remove(self.tmp_img)
@@ -175,7 +196,6 @@ class LiveTranslator:
 
         display = Gdk.Display.get_default()
         monitor = display.get_monitor_at_point(self.screen_x, self.screen_y)
-        geom = monitor.get_geometry()
 
         self.window = Gtk.Window()
         GtkLayerShell.init_for_window(self.window)
@@ -242,111 +262,132 @@ class LiveTranslator:
         self.apply_passthrough()
         self.window.show_all()
 
-    def clear_subtitles(self) -> None:
-        """Removes all currently displayed floating subtitles."""
+    def update_subtitles_on_main_thread(self, items_to_render: List[Dict[str, any]]) -> None:
+        """
+        Runs on the GTK main thread via GLib.idle_add.
+        Clears old widgets and renders new floating subtitle labels.
+        """
+        import gi
+        from gi.repository import Gtk
+
         for widget in self.active_widgets:
             self.container.remove(widget)
         self.active_widgets.clear()
+
+        scan_offset_x = self.scan_x - self.screen_x
+        scan_offset_y = self.scan_y - self.screen_y
+
+        for item in items_to_render:
+            trans = item["trans"]
+            label = Gtk.Label(label=trans)
+            label.get_style_context().add_class("hud-subtitle")
+            label.set_xalign(0.0)
+            label.set_line_wrap(True)
+            label.set_max_width_chars(60)
+            label.set_selectable(False)
+
+            # Position directly floating above the detected Japanese dialogue line
+            pos_x = scan_offset_x + item["left"]
+            pos_y = scan_offset_y + item["top"] - max(int(item["height"] * 0.9), 24)
+            pos_y = max(pos_y, 0)
+
+            self.container.put(label, pos_x, pos_y)
+            self.active_widgets.append(label)
+
         self.container.show_all()
         if hasattr(self, "apply_passthrough"):
             self.apply_passthrough()
 
-    def tick(self) -> bool:
-        """Main polling cycle executed reliably on GTK timer."""
+    def background_scan_loop(self) -> None:
+        """
+        Background worker thread executing capture, OCR, and translation
+        without blocking the GTK event loop or stuttering game frame rates.
+        """
         import gi
-        from gi.repository import Gtk
+        from gi.repository import GLib
 
-        try:
-            # 1. Fast frame capture of watched region
-            proc = subprocess.run(
-                ["grim", "-g", self.scan_geometry, self.tmp_img],
-                capture_output=True,
-                check=False
-            )
-            if proc.returncode != 0 or not os.path.exists(self.tmp_img):
-                return True
-
-            # 2. Fast perceptual hash comparison to skip idle frames (0% CPU)
-            img_hash = compute_image_hash(self.tmp_img)
-            if img_hash == self.last_img_hash:
-                return True
-
-            self.last_img_hash = img_hash
-
-            # 3. Extract text lines with bounding boxes
-            boxes = extract_text_lines_with_boxes(
-                self.tmp_img,
-                lang=self.source_lang,
-                psm=self.psm
-            )
-
-            current_text_signature = "|".join(b["text"] for b in boxes)
-            if current_text_signature == self.last_text_hash:
-                return True
-
-            self.last_text_hash = current_text_signature
-
-            # If screen has no Japanese text, clear subtitles immediately
-            if not boxes:
-                self.clear_subtitles()
-                return True
-
-            # 4. Batch translate all detected text lines
-            raw_texts = [b["text"] for b in boxes]
-            translated_lines = batch_translate_texts(
-                raw_texts,
-                source_lang=self.source_lang,
-                target_lang=self.target_lang
-            )
-
-            # 5. Clear previous widgets and render new floating subtitles directly above original text
-            self.clear_subtitles()
-
-            # Relative offset from scan region to screen monitor coordinates
-            scan_offset_x = self.scan_x - self.screen_x
-            scan_offset_y = self.scan_y - self.screen_y
-
-            for item, trans in zip(boxes, translated_lines):
-                if not trans or not trans.strip():
+        while self.running:
+            try:
+                # 1. Fast frame capture of watched region
+                proc = subprocess.run(
+                    ["grim", "-g", self.scan_geometry, self.tmp_img],
+                    capture_output=True,
+                    check=False
+                )
+                if proc.returncode != 0 or not os.path.exists(self.tmp_img):
+                    time.sleep(self.interval_sec)
                     continue
 
-                label = Gtk.Label(label=trans)
-                label.get_style_context().add_class("hud-subtitle")
-                label.set_xalign(0.0)
-                label.set_line_wrap(True)
-                label.set_max_width_chars(60)
+                # 2. Fast sensitive signature check to skip completely static scenes
+                img_bytes = get_image_signature(self.tmp_img)
+                if img_bytes and self.last_img_bytes and not has_significant_change(self.last_img_bytes, img_bytes):
+                    time.sleep(self.interval_sec)
+                    continue
 
-                # Position directly floating above the detected Japanese dialogue line
-                # item['top'] is relative to the scan image
-                pos_x = scan_offset_x + item["left"]
-                pos_y = scan_offset_y + item["top"] - max(int(item["height"] * 0.9), 24)
-                pos_y = max(pos_y, 0)
+                self.last_img_bytes = img_bytes
 
-                label.set_selectable(False)
+                # 3. Extract text lines with bounding boxes
+                boxes = extract_text_lines_with_boxes(
+                    self.tmp_img,
+                    lang=self.source_lang,
+                    psm=self.psm
+                )
 
-                self.container.put(label, pos_x, pos_y)
-                self.active_widgets.append(label)
+                # Filter lines: only process lines that actually contain CJK characters for Japanese mode
+                if self.source_lang.lower() in ("ja", "jp", "jpn"):
+                    boxes = [b for b in boxes if CJK_REGEX.search(b["text"])]
 
-            self.container.show_all()
-            if hasattr(self, "apply_passthrough"):
-                self.apply_passthrough()
+                current_text_signature = "|".join(b["text"] for b in boxes)
+                if current_text_signature == self.last_text_hash:
+                    time.sleep(self.interval_sec)
+                    continue
 
-            # 6. Copy newest dialogue to clipboard if enabled
-            if self.copy_clipboard and translated_lines:
-                full_text = "\n".join(t for t in translated_lines if t.strip())
-                if full_text:
-                    subprocess.run(["wl-copy"], input=full_text.encode("utf-8"), check=False)
+                self.last_text_hash = current_text_signature
 
-        except Exception as e:
-            print(f"Live HUD translation error: {e}", file=sys.stderr)
+                # If no Japanese text remains on screen, clear subtitles immediately
+                if not boxes:
+                    GLib.idle_add(self.update_subtitles_on_main_thread, [])
+                    time.sleep(self.interval_sec)
+                    continue
 
-        return True  # Keep GLib timer active
+                # 4. Batch translate all detected text lines
+                raw_texts = [b["text"] for b in boxes]
+                translated_lines = batch_translate_texts(
+                    raw_texts,
+                    source_lang=self.source_lang,
+                    target_lang=self.target_lang
+                )
+
+                items_to_render = []
+                for b, trans in zip(boxes, translated_lines):
+                    if trans and trans.strip():
+                        items_to_render.append({
+                            "left": b["left"],
+                            "top": b["top"],
+                            "height": b["height"],
+                            "width": b["width"],
+                            "trans": trans
+                        })
+
+                # Schedule UI update on GTK main loop
+                GLib.idle_add(self.update_subtitles_on_main_thread, items_to_render)
+
+                # 5. Copy dialogue to clipboard if enabled
+                if self.copy_clipboard and translated_lines:
+                    full_text = "\n".join(t for t in translated_lines if t.strip())
+                    if full_text:
+                        subprocess.run(["wl-copy"], input=full_text.encode("utf-8"), check=False)
+
+            except Exception as e:
+                print(f"Background HUD loop error: {e}", file=sys.stderr)
+
+            time.sleep(self.interval_sec)
 
     def run(self) -> None:
-        """Starts the live monitoring loop."""
+        """Starts the live monitoring loop with background scanning."""
         import gi
         gi.require_version('Gtk', '3.0')
-        from gi.repository import Gtk, GLib
+        from gi.repository import Gtk
 
         with open(get_pid_file(), "w") as f:
             f.write(str(os.getpid()))
@@ -361,9 +402,10 @@ class LiveTranslator:
 
         self.setup_ui()
 
-        # Run first tick immediately and schedule every interval
-        self.tick()
-        GLib.timeout_add(self.interval_ms, self.tick)
+        # Start non-blocking background scanner thread
+        self.running = True
+        self.worker_thread = threading.Thread(target=self.background_scan_loop, daemon=True)
+        self.worker_thread.start()
 
         try:
             Gtk.main()
@@ -374,7 +416,7 @@ class LiveTranslator:
 def toggle_live(
     source_lang: str = "ja",
     target_lang: str = "en",
-    interval: float = 0.5,
+    interval: float = 0.4,
     psm: int = 6,
     copy_clipboard: bool = True,
     fullscreen: bool = True,
