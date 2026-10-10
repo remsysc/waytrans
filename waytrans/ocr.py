@@ -241,4 +241,8 @@ def extract_text_lines_with_boxes(
                 "height": l["height"]
             })
 
+    # If uniform block (psm=6) found no text on complex layout, retry with auto segmentation (psm=3)
+    if not results and psm != 3:
+        return extract_text_lines_with_boxes(image_path, lang=lang, psm=3)
+
     return results

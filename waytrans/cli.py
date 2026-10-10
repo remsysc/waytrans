@@ -164,15 +164,11 @@ def main() -> None:
         if not args.no_clipboard:
             copy_to_clipboard(translated_text)
 
-        # 5. Optional extra notification
-        if args.notify:
-            notify_fallback(extracted_text, translated_text, title=f"waytrans [{args.source}➔{args.target}]")
+        # 5. Send desktop notification for immediate visual confirmation
+        notify_fallback(extracted_text, translated_text, title=f"waytrans [{args.source}➔{args.target}]")
 
-        # 6. Display overlay
-        if args.no_overlay or not has_layer_shell_support():
-            if not args.notify:
-                notify_fallback(extracted_text, translated_text, title=f"waytrans [{args.source}➔{args.target}]")
-        else:
+        # 6. Display in-place overlay if supported
+        if not args.no_overlay and has_layer_shell_support():
             display_overlay(
                 x=x,
                 y=y,

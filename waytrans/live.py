@@ -225,30 +225,32 @@ class LiveTranslator:
             if not translated.strip():
                 continue
 
-            line_h = max(18, item["height"])
+            line_h = max(20, item["height"])
             font_size = max(11, min(24, int(line_h * 0.65)))
 
-            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-            box.get_style_context().add_class("text-mask")
+            ebox = Gtk.EventBox()
+            ebox.get_style_context().add_class("text-mask")
 
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
             lbl = Gtk.Label()
             lbl.set_text(translated)
             lbl.get_style_context().add_class("translated-label")
             lbl.set_xalign(0.0)
 
-            font_css = f".translated-label {{ font-size: {font_size}px; }}".encode("utf-8")
+            font_css = f".translated-label {{ font-size: {font_size}px; color: #ffffff; font-weight: bold; }}".encode("utf-8")
             lbl_provider = Gtk.CssProvider()
             lbl_provider.load_from_data(font_css)
             lbl.get_style_context().add_provider(lbl_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
             box.pack_start(lbl, False, False, 0)
+            ebox.add(box)
 
             est_w = max(item["width"], len(translated) * int(font_size * 0.65) + 16)
-            box.set_size_request(min(est_w, self.w), line_h)
+            ebox.set_size_request(min(est_w, self.w), line_h)
 
             pos_x = max(0, min(item["left"], self.w - 20))
             pos_y = max(0, min(item["top"], self.h - 15))
-            self.fixed.put(box, pos_x, pos_y)
+            self.fixed.put(ebox, pos_x, pos_y)
 
         self.fixed.show_all()
         return False
@@ -388,9 +390,13 @@ def toggle_live(
         except OSError:
             pass
 
+    if w < 25 or h < 15:
+        notify_fallback("Live Mode", "Selected region was too small. Please drag a box around the text area.", title="waytrans")
+        return
+
     notify_fallback(
-        "Live Mode",
-        f"🟢 Live translation active ({w}x{h}). Press toggle hotkey again to stop.",
+        "Live Mode Active",
+        f"🟢 Watching {w}x{h} region. Press shortcut again to stop.",
         title="waytrans"
     )
 
