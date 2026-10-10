@@ -2,6 +2,7 @@
 Live dynamic screen translation module for Wayland.
 Watches a selected screen region, detects text lines using Tesseract TSV bounding boxes,
 and projects translated English text directly on top of the original words in real-time.
+Optimized with batch translation, in-memory caching, and asynchronous processing.
 """
 
 import hashlib
@@ -10,11 +11,13 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from typing import Dict, List, Optional
 
 from waytrans.capture import capture_region, CaptureError
 from waytrans.ocr import extract_text_lines_with_boxes
-from waytrans.translator import translate_text
+from waytrans.translator import batch_translate_texts
 from waytrans.overlay import has_layer_shell_support, notify_fallback
 
 PID_FILE = os.path.expanduser("~/.cache/waytrans/live.pid")
@@ -105,7 +108,7 @@ class LiveTranslator:
         self.geometry = f"{x},{y} {w}x{h}"
         self.source_lang = source_lang
         self.target_lang = target_lang
-        self.interval_ms = interval_ms
+        self.interval_s = max(0.2, interval_ms / 1000.0)
         self.psm = psm
         self.copy_clipboard = copy_clipboard
 
@@ -113,12 +116,16 @@ class LiveTranslator:
         self.last_combined_text = ""
         self.tmp_img = tempfile.mktemp(suffix=".png", prefix="waytrans_live_")
 
+        self.running = False
+        self.worker_thread = None
+        self.is_processing = False
+
         self.window = None
         self.fixed = None
-        self.active_widgets: List[any] = []
 
     def cleanup(self) -> None:
         """Clean up temporary files and PID file."""
+        self.running = False
         if os.path.exists(self.tmp_img):
             try:
                 os.remove(self.tmp_img)
@@ -160,10 +167,8 @@ class LiveTranslator:
         GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.LEFT, local_x)
         GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.TOP, local_y)
 
-        # Keyboard mode none allows unrestricted typing in apps underneath
+        # Keyboard mode none allows typing in apps underneath
         GtkLayerShell.set_keyboard_mode(self.window, GtkLayerShell.KeyboardMode.NONE)
-
-        # Set window size to match the region
         self.window.set_default_size(self.w, self.h)
 
         screen = self.window.get_screen()
@@ -198,118 +203,130 @@ class LiveTranslator:
         self.window.add(self.fixed)
         self.window.realize()
 
-        # Input shape pass-through so clicks pass directly to the game/manga
+        # Input shape pass-through so clicks pass directly to game/browser
         self.window.input_shape_combine_region(cairo.Region())
         self.window.show_all()
 
-    def clear_overlay(self) -> None:
-        """Removes all translated text masks from the overlay."""
+    def clear_overlay(self) -> bool:
+        """Thread-safe UI clear."""
         if self.fixed:
             for child in self.fixed.get_children():
                 self.fixed.remove(child)
+        return False
 
-    def tick(self) -> bool:
-        """Polls screen, parses exact text bounding boxes, and updates in-place masks."""
+    def update_overlay_ui(self, boxes: List[Dict[str, any]], translations: List[str]) -> bool:
+        """Applies new translated in-place boxes on the GTK main thread."""
+        import gi
         from gi.repository import Gtk
 
-        try:
-            # 1. Capture watched region
-            proc = subprocess.run(
-                ["grim", "-g", self.geometry, self.tmp_img],
-                capture_output=True,
-                check=False
-            )
-            if proc.returncode != 0 or not os.path.exists(self.tmp_img):
-                return True
+        self.clear_overlay()
 
-            # 2. Check if screen region changed
-            img_hash = compute_image_hash(self.tmp_img)
-            if img_hash == self.last_img_hash:
-                return True
+        for item, translated in zip(boxes, translations):
+            if not translated.strip():
+                continue
 
-            self.last_img_hash = img_hash
+            line_h = max(18, item["height"])
+            font_size = max(11, min(24, int(line_h * 0.65)))
 
-            # 3. Extract text lines and their pixel bounding boxes
-            boxes = extract_text_lines_with_boxes(self.tmp_img, lang=self.source_lang, psm=self.psm)
-            combined_text = " ".join(b["text"] for b in boxes)
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+            box.get_style_context().add_class("text-mask")
 
-            if combined_text == self.last_combined_text:
-                return True
+            lbl = Gtk.Label()
+            lbl.set_text(translated)
+            lbl.get_style_context().add_class("translated-label")
+            lbl.set_xalign(0.0)
 
-            self.last_combined_text = combined_text
+            font_css = f".translated-label {{ font-size: {font_size}px; }}".encode("utf-8")
+            lbl_provider = Gtk.CssProvider()
+            lbl_provider.load_from_data(font_css)
+            lbl.get_style_context().add_provider(lbl_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
-            # 4. If no text detected on screen, clear overlay
-            if not boxes:
-                self.clear_overlay()
-                return True
+            box.pack_start(lbl, False, False, 0)
 
-            # 5. Clear previous in-place boxes and render new translations
-            self.clear_overlay()
+            est_w = max(item["width"], len(translated) * int(font_size * 0.65) + 16)
+            box.set_size_request(min(est_w, self.w), line_h)
 
-            full_translations = []
+            pos_x = max(0, min(item["left"], self.w - 20))
+            pos_y = max(0, min(item["top"], self.h - 15))
+            self.fixed.put(box, pos_x, pos_y)
 
-            for item in boxes:
-                raw_text = item["text"]
-                if not raw_text.strip():
+        self.fixed.show_all()
+        return False
+
+    def _worker_loop(self) -> None:
+        """Background asynchronous processing loop for capture, OCR, and batch translation."""
+        import gi
+        from gi.repository import GLib
+
+        while self.running:
+            try:
+                time.sleep(self.interval_s)
+
+                if self.is_processing:
                     continue
 
-                translated = translate_text(
-                    raw_text,
+                self.is_processing = True
+
+                # 1. Capture watched region
+                proc = subprocess.run(
+                    ["grim", "-g", self.geometry, self.tmp_img],
+                    capture_output=True,
+                    check=False
+                )
+                if proc.returncode != 0 or not os.path.exists(self.tmp_img):
+                    self.is_processing = False
+                    continue
+
+                # 2. Check if screen changed visually via perceptual hash
+                img_hash = compute_image_hash(self.tmp_img)
+                if img_hash == self.last_img_hash:
+                    self.is_processing = False
+                    continue
+
+                self.last_img_hash = img_hash
+
+                # 3. Extract text lines and bounding boxes
+                boxes = extract_text_lines_with_boxes(self.tmp_img, lang=self.source_lang, psm=self.psm)
+                combined_text = " ".join(b["text"] for b in boxes)
+
+                if combined_text == self.last_combined_text:
+                    self.is_processing = False
+                    continue
+
+                self.last_combined_text = combined_text
+
+                # 4. If region is clear of text, clear overlay
+                if not boxes:
+                    GLib.idle_add(self.clear_overlay)
+                    self.is_processing = False
+                    continue
+
+                # 5. High-performance batch translation (1 network request for all lines)
+                raw_texts = [b["text"] for b in boxes]
+                translations = batch_translate_texts(
+                    raw_texts,
                     source_lang=self.source_lang,
                     target_lang=self.target_lang
                 )
-                if not translated:
-                    continue
 
-                full_translations.append(translated)
+                # 6. Dispatch UI update to GTK main loop
+                GLib.idle_add(self.update_overlay_ui, boxes, translations)
 
-                # Determine dynamic font size based on text height
-                line_h = max(18, item["height"])
-                font_size = max(11, min(24, int(line_h * 0.65)))
+                # 7. Sync clipboard if enabled
+                if self.copy_clipboard and translations:
+                    joined = "\n".join(t for t in translations if t)
+                    subprocess.run(["wl-copy"], input=joined.encode("utf-8"), check=False)
 
-                # Container covering the original text
-                box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-                box.get_style_context().add_class("text-mask")
-
-                lbl = Gtk.Label()
-                lbl.set_text(translated)
-                lbl.get_style_context().add_class("translated-label")
-                lbl.set_xalign(0.0)
-
-                # Dynamic font styling
-                font_css = f".translated-label {{ font-size: {font_size}px; }}".encode("utf-8")
-                lbl_provider = Gtk.CssProvider()
-                lbl_provider.load_from_data(font_css)
-                lbl.get_style_context().add_provider(lbl_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-
-                box.pack_start(lbl, False, False, 0)
-
-                # Ensure box covers the line height and accommodates English length
-                est_w = max(item["width"], len(translated) * int(font_size * 0.65) + 16)
-                box.set_size_request(min(est_w, self.w), line_h)
-
-                # Place directly on top of the original words
-                pos_x = max(0, min(item["left"], self.w - 20))
-                pos_y = max(0, min(item["top"], self.h - 15))
-                self.fixed.put(box, pos_x, pos_y)
-
-            self.fixed.show_all()
-
-            # 6. Copy translated text to clipboard
-            if self.copy_clipboard and full_translations:
-                joined = "\n".join(full_translations)
-                subprocess.run(["wl-copy"], input=joined.encode("utf-8"), check=False)
-
-        except Exception as e:
-            print(f"Live translation tick error: {e}", file=sys.stderr)
-
-        return True
+            except Exception as e:
+                print(f"Background worker error: {e}", file=sys.stderr)
+            finally:
+                self.is_processing = False
 
     def run(self) -> None:
         """Starts the live monitoring loop."""
         import gi
         gi.require_version('Gtk', '3.0')
-        from gi.repository import Gtk, GLib
+        from gi.repository import Gtk
 
         with open(get_pid_file(), "w") as f:
             f.write(str(os.getpid()))
@@ -323,8 +340,11 @@ class LiveTranslator:
         signal.signal(signal.SIGINT, handle_signal)
 
         self.setup_ui()
-        self.tick()
-        GLib.timeout_add(self.interval_ms, self.tick)
+
+        # Start asynchronous background worker
+        self.running = True
+        self.worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
+        self.worker_thread.start()
 
         try:
             Gtk.main()
@@ -335,7 +355,7 @@ class LiveTranslator:
 def toggle_live(
     source_lang: str = "ja",
     target_lang: str = "en",
-    interval: float = 0.5,
+    interval: float = 0.4,
     psm: int = 6,
     copy_clipboard: bool = True
 ) -> None:
