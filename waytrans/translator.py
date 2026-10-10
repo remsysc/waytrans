@@ -49,6 +49,7 @@ def translate_text(
         "trans",
         "-brief",
         "-no-ansi",
+        "-e", "google",
         f"{source_lang}:{target_lang}",
         cleaned
     ]
@@ -118,6 +119,7 @@ def batch_translate_texts(
             "trans",
             "-brief",
             "-no-ansi",
+            "-e", "google",
             f"{source_lang}:{target_lang}",
             payload
         ]

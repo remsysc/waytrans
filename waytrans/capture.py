@@ -14,14 +14,69 @@ class CaptureError(Exception):
     pass
 
 
-def check_capture_dependencies() -> None:
-    """Verify that grim and slurp are installed."""
-    missing = [tool for tool in ("slurp", "grim") if not shutil.which(tool)]
+def check_capture_dependencies(need_slurp: bool = True) -> None:
+    """Verify that grim (and optionally slurp) are installed."""
+    tools = ["grim"]
+    if need_slurp:
+        tools.append("slurp")
+    missing = [tool for tool in tools if not shutil.which(tool)]
     if missing:
         raise CaptureError(
             f"Missing required Wayland capture tools: {', '.join(missing)}. "
             "Please install them via your package manager."
         )
+
+
+def get_active_monitor_geometry() -> Tuple[int, int, int, int]:
+    """
+    Detect the geometry (x, y, w, h) of the currently focused monitor in Hyprland or fallback.
+    """
+    if shutil.which("hyprctl"):
+        try:
+            import json
+            res = subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True, text=True, check=False)
+            if res.returncode == 0:
+                monitors = json.loads(res.stdout)
+                focused = next((m for m in monitors if m.get("focused")), monitors[0] if monitors else None)
+                if focused:
+                    return int(focused["x"]), int(focused["y"]), int(focused["width"]), int(focused["height"])
+        except Exception:
+            pass
+
+    # Fallback to Gdk
+    try:
+        import gi
+        gi.require_version('Gdk', '3.0')
+        from gi.repository import Gdk
+        display = Gdk.Display.get_default()
+        if display and display.get_n_monitors() > 0:
+            m = display.get_primary_monitor() or display.get_monitor(0)
+            geom = m.get_geometry()
+            return geom.x, geom.y, geom.width, geom.height
+    except Exception:
+        pass
+
+    return 0, 0, 1920, 1080
+
+
+def get_active_window_geometry() -> Optional[Tuple[int, int, int, int]]:
+    """
+    Detect geometry (x, y, w, h) of the currently focused window in Hyprland.
+    """
+    if shutil.which("hyprctl"):
+        try:
+            import json
+            res = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True, check=False)
+            if res.returncode == 0:
+                win = json.loads(res.stdout)
+                if win and win.get("mapped") and win.get("size") and win["size"][0] > 0:
+                    at = win.get("at", [0, 0])
+                    size = win.get("size", [1920, 1080])
+                    return int(at[0]), int(at[1]), int(size[0]), int(size[1])
+        except Exception:
+            pass
+    return None
+
 
 
 def capture_region(

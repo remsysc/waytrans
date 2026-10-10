@@ -103,14 +103,14 @@ In `~/.config/hypr/hyprland.conf`:
 # One-shot screen translation (Super + Alt + J)
 bind = SUPER_ALT, J, exec, waytrans -s ja -t en
 
-# Dynamic Live Translation toggle (Super + Alt + L)
+# Game HUD Mode toggle: fullscreen containerless floating subtitles (Super + Alt + L)
 bind = SUPER_ALT, L, exec, waytrans --live -s ja -t en
 ```
 
 Or if you use Hyprland Lua configurations (`~/.config/hypr/custom/keybinds.lua`):
 ```lua
 hl.bind("SUPER + ALT + J", hl.dsp.exec_cmd("waytrans -s ja -t en"), { description = "Translate screen JP to EN" })
-hl.bind("SUPER + ALT + L", hl.dsp.exec_cmd("waytrans --live -s ja -t en"), { description = "Toggle Live Translation" })
+hl.bind("SUPER + ALT + L", hl.dsp.exec_cmd("waytrans --live -s ja -t en"), { description = "Toggle Game HUD Live Mode" })
 ```
 
 ### Sway
@@ -131,12 +131,25 @@ riverctl map normal Super+Alt L spawn "waytrans --live -s ja -t en"
 
 ---
 
+## 🎮 Game HUD Mode (Seamless In-Game Subtitles)
+
+When toggling live mode (`waytrans --live`), `waytrans` activates **Game HUD Mode**:
+- **Zero Opaque Containers**: No cards, boxes, or borders obstructing game artwork or UI.
+- **Floating Subtitles**: Subtitle text floats directly above original Japanese dialogue (furigana/subtitle style for reading and learning).
+- **Game-Native Typography**: High-contrast white glyphs with crisp dark outlines (`text-shadow`) readable on any background.
+- **100% Click-Through**: Zero mouse/keyboard capture—dialogue clicking, character movement, and game controls work without interruption.
+- **Perceptual Scene Diffing**: Frames are hashed before processing. Zero OCR or network calls when the screen hasn't changed (0% idle CPU).
+- **Fast Batch Translation**: Translates all dialogue lines in a single network pass with Google's fast engine and an in-memory session cache.
+
+---
+
 ## 🛠️ CLI Usage & Flags
 
 ```text
 usage: waytrans [-h] [-s SOURCE] [-t TARGET] [--timeout TIMEOUT] [--psm PSM]
                 [--no-overlay] [--no-clipboard] [--notify] [-l]
-                [--interval INTERVAL] [--stop-live] [--setup-models] [-v]
+                [--interval INTERVAL] [--fullscreen] [--region]
+                [--zone {all,bottom}] [--stop-live] [--setup-models] [-v]
 
 options:
   -h, --help           Show help message and exit
@@ -149,6 +162,9 @@ options:
   --notify             Trigger a desktop notification alongside the overlay
   -l, --live           Toggle dynamic live translation mode on or off
   --interval INTERVAL  Polling interval in seconds for live translation (default: 0.5)
+  --fullscreen         Monitor active screen in fullscreen HUD mode (default: True)
+  --region             Use interactive drag-box selection instead of fullscreen
+  --zone {all,bottom}  Screen scan zone: 'all' (default) or 'bottom' (dialogue zone)
   --stop-live          Stop any currently running live translation session
   --setup-models       Download high-accuracy Japanese OCR models
   -v, --version        Show version
@@ -156,19 +172,24 @@ options:
 
 ### Examples
 
-**One-shot translation:**
+**One-shot area translation:**
 ```bash
 waytrans
 ```
 
-**Toggle Live / Dynamic translation on/off:**
+**Toggle Game HUD Mode on/off across fullscreen:**
 ```bash
 waytrans -l
 ```
 
-Translate Chinese (Simplified) to English in live mode:
+**Game mode optimized for bottom dialogue box:**
 ```bash
-waytrans -l -s zh -t en
+waytrans -l --zone bottom
+```
+
+**Live translation with manual region selection (e.g. specific manga panel):**
+```bash
+waytrans -l --region
 ```
 
 Translate German to English with a 20-second timeout:
