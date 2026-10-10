@@ -96,7 +96,7 @@ def main() -> None:
         "--zone",
         choices=["all", "bottom"],
         default="all",
-        help="Screen scan zone in live mode: 'all' (entire screen) or 'bottom' (bottom 35% for game dialogue)."
+        help="Screen scan zone in live mode: 'all' (entire screen) or 'bottom' (bottom 35%% for game dialogue)."
     )
     parser.add_argument(
         "--stop-live",
