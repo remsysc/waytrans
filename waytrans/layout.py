@@ -1,14 +1,56 @@
 """
 Smart dialogue layout, text clustering, and typography engine for waytrans.
 Groups fragmented OCR bounding boxes into coherent dialogue blocks and computes
-optimal subtitle positioning and font metrics.
+optimal subtitle positioning, padding, and font metrics.
 """
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 import re
 
+# Comprehensive Japanese Kana + Kanji pattern
 CJK_REGEX = re.compile(r'[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]')
+
+
+def is_valid_japanese_dialogue(text: str) -> bool:
+    """
+    Filters out OCR noise, English web text, code snippets, and UI hallucination symbols.
+    Ensures that only real Japanese sentences (dialogue, narration, options) trigger translation.
+    """
+    cleaned = text.strip()
+    if len(cleaned) < 2:
+        return False
+
+    # Remove non-alphanumeric punctuation for ratio testing
+    pure_chars = re.sub(r'[^\w\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]', '', cleaned)
+    if len(pure_chars) < 2:
+        return False
+
+    # Count actual CJK characters (Hiragana, Katakana, Kanji)
+    cjk_chars = CJK_REGEX.findall(pure_chars)
+    cjk_count = len(cjk_chars)
+
+    # Must contain at least 2 CJK characters
+    if cjk_count < 2:
+        return False
+
+    # Filter out English sentences with incidental CJK characters (e.g. "Jisho ... 日 ...")
+    latin_count = len(re.findall(r'[a-zA-Z]', pure_chars))
+    if latin_count > cjk_count:
+        return False
+
+    # Filter out common Tesseract hallucination symbols on dark/empty backgrounds
+    # e.g. "ロ・ooミぶっmnエーエ恒"
+    if 'ロ' in pure_chars or pure_chars.count('二') >= 2:
+        return False
+
+    # Filter out any string containing mixed lowercase latin letters interspersed with kana
+    if latin_count > 0:
+        return False
+
+    # High CJK density requirement (at least 75% of alphanumeric characters must be CJK)
+    cjk_ratio = cjk_count / len(pure_chars)
+    return cjk_ratio >= 0.75
 
 
 @dataclass
@@ -56,21 +98,12 @@ class DialogueBlock:
 
 def cluster_text_lines(
     raw_boxes: List[Dict[str, any]],
-    max_vertical_gap_ratio: float = 1.8,
-    max_horizontal_gap: int = 140
+    max_vertical_gap_ratio: float = 1.6,
+    max_horizontal_gap: int = 100
 ) -> List[DialogueBlock]:
     """
     Clusters nearby, vertically or horizontally adjacent OCR text fragments into coherent
     dialogue blocks using proximity-based spatial union.
-
-    Args:
-        raw_boxes: List of bounding box dicts from Tesseract TSV.
-        max_vertical_gap_ratio: Maximum vertical distance between consecutive lines
-                                relative to average line height.
-        max_horizontal_gap: Maximum horizontal separation between fragments on the same line.
-
-    Returns:
-        List of merged DialogueBlock objects, ordered top-to-bottom.
     """
     if not raw_boxes:
         return []
@@ -97,9 +130,7 @@ def cluster_text_lines(
     for line in lines:
         assigned = False
         for cluster in clusters:
-            # Check proximity to any existing line in the cluster
             for member in cluster:
-                # Vertical alignment test (consecutive lines in a dialogue paragraph)
                 vert_dist = line.top - member.bottom
                 vert_overlap = min(line.bottom, member.bottom) - max(line.top, member.top)
                 horiz_overlap = min(line.right, member.right) - max(line.left, member.left)
@@ -108,13 +139,13 @@ def cluster_text_lines(
                 avg_h = (line.height + member.height) / 2.0
                 max_v_gap = avg_h * max_vertical_gap_ratio
 
-                # 1. New line right beneath member (with horizontal overlap or close alignment)
-                if 0 <= vert_dist <= max_v_gap and (horiz_overlap > -80 or horiz_dist < max_horizontal_gap):
+                # 1. New line right beneath member
+                if 0 <= vert_dist <= max_v_gap and (horiz_overlap > -40 or horiz_dist < max_horizontal_gap):
                     cluster.append(line)
                     assigned = True
                     break
 
-                # 2. On the same horizontal line (fragmented word or dialogue prefix)
+                # 2. On the same horizontal line
                 if vert_overlap > (avg_h * 0.4) and horiz_dist <= max_horizontal_gap:
                     cluster.append(line)
                     assigned = True
@@ -126,7 +157,6 @@ def cluster_text_lines(
         if not assigned:
             clusters.append([line])
 
-    # Convert clusters to DialogueBlocks
     dialogue_blocks: List[DialogueBlock] = []
     for cluster in clusters:
         min_left = min(l.left for l in cluster)
@@ -135,8 +165,6 @@ def cluster_text_lines(
         max_bottom = max(l.bottom for l in cluster)
         avg_h = int(sum(l.height for l in cluster) / len(cluster))
 
-        # Join text lines smoothly
-        # For Japanese text, combine directly without extra whitespace
         combined = "".join(l.text for l in cluster)
 
         dialogue_blocks.append(
@@ -163,54 +191,41 @@ def compute_smart_placement(
     scan_offset_y: int = 0
 ) -> Tuple[int, int, int, int]:
     """
-    Computes optimal coordinate placement and font sizing for a translated subtitle.
-
-    Placement rules:
-    1. Center the English subtitle over the dialogue block horizontally.
-    2. Float the subtitle directly above the dialogue block (`block.top - height - margin`).
-       If the block is too close to the top of the screen (e.g. nameplate / title), float beneath.
-    3. Scale font size smoothly based on original Japanese line height.
-    4. Constrain width so text wraps cleanly without spilling off-screen.
-
-    Returns:
-        (pos_x, pos_y, font_size_px, max_width_px)
+    Computes tidy, balanced subtitle placement:
+    - Anchored right above the dialogue block.
+    - Proportional, readable font size (15-20px).
+    - Compact width fitting the sentence cleanly.
     """
-    # 1. Proportional font scaling
-    # English subtitles read best when font height is ~85% of original Japanese glyph height
-    base_size = int(block.avg_line_height * 0.85)
-    font_size = max(13, min(base_size, 26))
+    # Readable subtitle font size
+    base_size = int(block.avg_line_height * 0.8)
+    font_size = max(14, min(base_size, 20))
 
-    # 2. Maximum width allocation
-    # Allocate at least the width of the dialogue box, with a minimum reading width of 320px
-    estimated_char_width = font_size * 0.58
-    text_length = len(translated_text)
-    natural_width = int(text_length * estimated_char_width)
+    # Calculate optimal wrap width based on text length
+    estimated_char_w = font_size * 0.55
+    text_len = len(translated_text)
+    natural_w = int(text_len * estimated_char_w) + 24
 
-    max_width = max(block.width + 40, min(natural_width, 700))
-    max_width = max(max_width, 280)
-    max_width = min(max_width, viewport_width - 40)
+    # Keep subtitle pill compact (do not stretch across whole monitor)
+    max_w = max(min(natural_w, 640), 220)
+    max_w = min(max_w, viewport_width - 60)
 
-    # 3. Horizontal Centering
+    # Center horizontally over dialogue block
     abs_center_x = scan_offset_x + block.center_x
-    pos_x = abs_center_x - (max_width // 2)
-    # Clamp within screen bounds with 20px padding
-    pos_x = max(20, min(pos_x, viewport_width - max_width - 20))
+    pos_x = abs_center_x - (max_w // 2)
+    pos_x = max(20, min(pos_x, viewport_width - max_w - 20))
 
-    # 4. Vertical Placement (Subtitle floating above)
-    # Estimate subtitle height based on line wrap
-    lines_count = max(1, (natural_width // max_width) + 1)
-    estimated_subtitle_h = int(lines_count * font_size * 1.35) + 10
+    # Vertical positioning
+    lines_est = max(1, (natural_w // max_w) + 1)
+    sub_h_est = int(lines_est * font_size * 1.3) + 16
 
     abs_top = scan_offset_y + block.top
     abs_bottom = scan_offset_y + block.bottom
 
     margin = 8
-    target_y = abs_top - estimated_subtitle_h - margin
-
-    # If too close to the top edge of screen, place immediately below dialogue instead
-    if target_y < 10:
+    target_y = abs_top - sub_h_est - margin
+    if target_y < 15:
         target_y = abs_bottom + margin
 
-    pos_y = max(10, min(target_y, viewport_height - estimated_subtitle_h - 10))
+    pos_y = max(15, min(target_y, viewport_height - sub_h_est - 15))
 
-    return pos_x, pos_y, font_size, max_width
+    return pos_x, pos_y, font_size, max_w

@@ -22,7 +22,7 @@ from waytrans.capture import (
     CaptureError
 )
 from waytrans.ocr import extract_text_lines_with_boxes
-from waytrans.layout import cluster_text_lines, compute_smart_placement
+from waytrans.layout import cluster_text_lines, compute_smart_placement, is_valid_japanese_dialogue
 from waytrans.translator import batch_translate_texts, _TRANSLATION_CACHE
 from waytrans.overlay import has_layer_shell_support, notify_fallback
 
@@ -346,10 +346,13 @@ class LiveTranslator:
 
                 # Filter lines: only process lines that actually contain CJK characters for Japanese mode
                 if self.source_lang.lower() in ("ja", "jp", "jpn"):
-                    boxes = [b for b in boxes if CJK_REGEX.search(b["text"])]
+                    boxes = [b for b in boxes if is_valid_japanese_dialogue(b["text"])]
 
                 # 4. Cluster text fragments into coherent dialogue blocks
                 dialogue_blocks = cluster_text_lines(boxes)
+
+                if self.source_lang.lower() in ("ja", "jp", "jpn"):
+                    dialogue_blocks = [b for b in dialogue_blocks if is_valid_japanese_dialogue(b.combined_text)]
 
                 current_text_signature = "|".join(b.combined_text for b in dialogue_blocks)
                 if current_text_signature == self.last_text_hash:
