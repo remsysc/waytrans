@@ -154,3 +154,91 @@ def run_ocr(
         cleaned = " ".join(lines)
 
     return cleaned
+
+
+def extract_text_lines_with_boxes(
+    image_path: str,
+    lang: str = "ja",
+    psm: int = 6
+) -> List[Dict[str, any]]:
+    """
+    Extracts text lines along with their exact pixel bounding boxes (left, top, width, height)
+    using Tesseract's TSV mode.
+    """
+    check_ocr_dependencies()
+
+    tess_lang = LANG_MAP.get(lang.lower(), lang)
+
+    env = os.environ.copy()
+    local_dir = get_tessdata_dir()
+    if os.path.exists(os.path.join(local_dir, "jpn.traineddata")):
+        env["TESSDATA_PREFIX"] = local_dir
+
+    cmd = [
+        "tesseract",
+        image_path,
+        "stdout",
+        "-l", tess_lang,
+        "--psm", str(psm),
+        "-c", "tessedit_create_tsv=1"
+    ]
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False
+        )
+    except Exception as e:
+        raise OCRError(f"Failed to execute tesseract TSV: {e}")
+
+    lines: List[Dict[str, any]] = []
+    curr_line: Optional[Dict[str, any]] = None
+
+    for row in proc.stdout.splitlines():
+        parts = row.split('\t')
+        if len(parts) < 12:
+            continue
+        level = parts[0]
+        if level == '4':  # Line level
+            if curr_line and curr_line["text"]:
+                lines.append(curr_line)
+            curr_line = {
+                "left": int(parts[6]),
+                "top": int(parts[7]),
+                "width": int(parts[8]),
+                "height": int(parts[9]),
+                "text": []
+            }
+        elif level == '5' and curr_line is not None:  # Word level
+            word = parts[11].strip()
+            if word:
+                curr_line["text"].append(word)
+
+    if curr_line and curr_line["text"]:
+        lines.append(curr_line)
+
+    results: List[Dict[str, any]] = []
+    is_cjk = lang.lower() in ("ja", "jp", "jpn", "zh", "chi_sim", "chi_tra")
+
+    for l in lines:
+        if is_cjk:
+            cleaned = "".join(l["text"])
+            cleaned = re.sub(r'[\r\t\n]', '', cleaned)
+            cleaned = re.sub(r'([一-龯ぁ-んァ-ヶ])\s+([一-龯ぁ-んァ-ヶ])', r'\1\2', cleaned)
+            cleaned = cleaned.replace(" ", "").strip()
+        else:
+            cleaned = " ".join(l["text"]).strip()
+
+        if cleaned:
+            results.append({
+                "text": cleaned,
+                "left": l["left"],
+                "top": l["top"],
+                "width": l["width"],
+                "height": l["height"]
+            })
+
+    return results

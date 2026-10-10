@@ -1,7 +1,7 @@
 """
 Live dynamic screen translation module for Wayland.
-Watches a selected screen region, detects text changes, and updates
-an in-place click-through overlay in real time.
+Watches a selected screen region, detects text lines using Tesseract TSV bounding boxes,
+and projects translated English text directly on top of the original words in real-time.
 """
 
 import hashlib
@@ -10,11 +10,10 @@ import signal
 import subprocess
 import sys
 import tempfile
-import time
-from typing import Optional, Tuple
+from typing import Dict, List, Optional
 
 from waytrans.capture import capture_region, CaptureError
-from waytrans.ocr import run_ocr
+from waytrans.ocr import extract_text_lines_with_boxes
 from waytrans.translator import translate_text
 from waytrans.overlay import has_layer_shell_support, notify_fallback
 
@@ -36,11 +35,9 @@ def is_live_running() -> Optional[int]:
     try:
         with open(pid_path, "r") as f:
             pid = int(f.read().strip())
-        # Check if process is running (signal 0 doesn't kill it)
         os.kill(pid, 0)
         return pid
     except (ValueError, OSError):
-        # Stale PID file
         if os.path.exists(pid_path):
             try:
                 os.remove(pid_path)
@@ -72,10 +69,7 @@ def stop_live() -> bool:
 
 
 def compute_image_hash(image_path: str) -> str:
-    """
-    Computes a fast perceptual hash (aHash) using Pillow,
-    or falls back to MD5 if Pillow is unavailable.
-    """
+    """Computes a fast perceptual hash (aHash) or MD5."""
     try:
         from PIL import Image
         with Image.open(image_path) as img:
@@ -85,7 +79,6 @@ def compute_image_hash(image_path: str) -> str:
             bits = "".join("1" if p > avg else "0" for p in pixels)
             return hex(int(bits, 2))
     except Exception:
-        # Fallback to MD5 of raw file content
         hasher = hashlib.md5()
         with open(image_path, "rb") as f:
             hasher.update(f.read())
@@ -117,13 +110,12 @@ class LiveTranslator:
         self.copy_clipboard = copy_clipboard
 
         self.last_img_hash = ""
-        self.last_text = ""
+        self.last_combined_text = ""
         self.tmp_img = tempfile.mktemp(suffix=".png", prefix="waytrans_live_")
 
         self.window = None
-        self.en_label = None
-        self.jp_label = None
-        self.status_label = None
+        self.fixed = None
+        self.active_widgets: List[any] = []
 
     def cleanup(self) -> None:
         """Clean up temporary files and PID file."""
@@ -140,7 +132,7 @@ class LiveTranslator:
                 pass
 
     def setup_ui(self) -> None:
-        """Initializes the GtkLayerShell overlay window."""
+        """Initializes the GtkLayerShell overlay window anchored over the watched region."""
         import gi
         import cairo
         gi.require_version('Gtk', '3.0')
@@ -162,46 +154,38 @@ class LiveTranslator:
         GtkLayerShell.set_layer(self.window, GtkLayerShell.Layer.OVERLAY)
         GtkLayerShell.set_namespace(self.window, "waytrans-live-overlay")
 
+        # Anchor window to exact region
         GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.TOP, True)
         GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.LEFT, True)
         GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.LEFT, local_x)
         GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.TOP, local_y)
 
-        # Keyboard mode none allows full typing underneath
+        # Keyboard mode none allows unrestricted typing in apps underneath
         GtkLayerShell.set_keyboard_mode(self.window, GtkLayerShell.KeyboardMode.NONE)
+
+        # Set window size to match the region
+        self.window.set_default_size(self.w, self.h)
 
         screen = self.window.get_screen()
         visual = screen.get_rgba_visual()
         if visual:
             self.window.set_visual(visual)
 
-        # CSS Styling
+        # CSS Styling - Window itself is completely transparent
         css = b"""
         window {
-            background-color: rgba(17, 17, 27, 0.88);
-            border: 2px solid #a6e3a1;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+            background-color: transparent;
         }
-        .container {
-            padding: 6px 12px;
-        }
-        .live-tag {
-            color: #a6e3a1;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+        .text-mask {
+            background-color: rgba(16, 16, 24, 0.94);
+            border: 1px solid #89b4fa;
+            border-radius: 4px;
+            padding: 2px 6px;
         }
         .translated-label {
-            color: #cdd6f4;
-            font-size: 15px;
+            color: #ffffff;
             font-weight: 700;
-        }
-        .source-label {
-            color: #a6adc8;
-            font-size: 11px;
-            font-weight: 400;
-            margin-top: 2px;
+            letter-spacing: 0.2px;
         }
         """
         css_provider = Gtk.CssProvider()
@@ -210,38 +194,22 @@ class LiveTranslator:
             screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        box.get_style_context().add_class("container")
-        box.set_size_request(min(self.w, 850), -1)
-
-        self.status_label = Gtk.Label(label="● LIVE TRANSLATING")
-        self.status_label.set_xalign(0.0)
-        self.status_label.get_style_context().add_class("live-tag")
-        box.pack_start(self.status_label, False, False, 0)
-
-        self.en_label = Gtk.Label(label="Waiting for text...")
-        self.en_label.set_line_wrap(True)
-        self.en_label.set_max_width_chars(65)
-        self.en_label.set_xalign(0.0)
-        self.en_label.get_style_context().add_class("translated-label")
-        box.pack_start(self.en_label, False, False, 0)
-
-        self.jp_label = Gtk.Label(label="")
-        self.jp_label.set_line_wrap(True)
-        self.jp_label.set_max_width_chars(70)
-        self.jp_label.set_xalign(0.0)
-        self.jp_label.get_style_context().add_class("source-label")
-        box.pack_start(self.jp_label, False, False, 0)
-
-        self.window.add(box)
+        self.fixed = Gtk.Fixed()
+        self.window.add(self.fixed)
         self.window.realize()
 
-        # CRITICAL: Make the window click-through so user can interact with game/manga beneath!
+        # Input shape pass-through so clicks pass directly to the game/manga
         self.window.input_shape_combine_region(cairo.Region())
         self.window.show_all()
 
+    def clear_overlay(self) -> None:
+        """Removes all translated text masks from the overlay."""
+        if self.fixed:
+            for child in self.fixed.get_children():
+                self.fixed.remove(child)
+
     def tick(self) -> bool:
-        """Single polling cycle executed on timer."""
+        """Polls screen, parses exact text bounding boxes, and updates in-place masks."""
         from gi.repository import Gtk
 
         try:
@@ -257,42 +225,85 @@ class LiveTranslator:
             # 2. Check if screen region changed
             img_hash = compute_image_hash(self.tmp_img)
             if img_hash == self.last_img_hash:
-                return True  # No visual change, skip OCR & translation
+                return True
 
             self.last_img_hash = img_hash
 
-            # 3. Extract text via OCR
-            text = run_ocr(self.tmp_img, lang=self.source_lang, psm=self.psm)
-            if text == self.last_text:
-                return True  # Text content identical, do not retranslate
+            # 3. Extract text lines and their pixel bounding boxes
+            boxes = extract_text_lines_with_boxes(self.tmp_img, lang=self.source_lang, psm=self.psm)
+            combined_text = " ".join(b["text"] for b in boxes)
 
-            self.last_text = text
-
-            if not text:
-                # Text cleared from region
-                self.en_label.set_text("...")
-                self.jp_label.set_text("")
+            if combined_text == self.last_combined_text:
                 return True
 
-            # 4. Translate newly detected text
-            translated = translate_text(
-                text,
-                source_lang=self.source_lang,
-                target_lang=self.target_lang
-            )
+            self.last_combined_text = combined_text
 
-            # 5. Update UI in-place
-            self.en_label.set_text(translated)
-            self.jp_label.set_text(text)
+            # 4. If no text detected on screen, clear overlay
+            if not boxes:
+                self.clear_overlay()
+                return True
 
-            # 6. Clipboard sync if enabled
-            if self.copy_clipboard:
-                subprocess.run(["wl-copy"], input=translated.encode("utf-8"), check=False)
+            # 5. Clear previous in-place boxes and render new translations
+            self.clear_overlay()
+
+            full_translations = []
+
+            for item in boxes:
+                raw_text = item["text"]
+                if not raw_text.strip():
+                    continue
+
+                translated = translate_text(
+                    raw_text,
+                    source_lang=self.source_lang,
+                    target_lang=self.target_lang
+                )
+                if not translated:
+                    continue
+
+                full_translations.append(translated)
+
+                # Determine dynamic font size based on text height
+                line_h = max(18, item["height"])
+                font_size = max(11, min(24, int(line_h * 0.65)))
+
+                # Container covering the original text
+                box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+                box.get_style_context().add_class("text-mask")
+
+                lbl = Gtk.Label()
+                lbl.set_text(translated)
+                lbl.get_style_context().add_class("translated-label")
+                lbl.set_xalign(0.0)
+
+                # Dynamic font styling
+                font_css = f".translated-label {{ font-size: {font_size}px; }}".encode("utf-8")
+                lbl_provider = Gtk.CssProvider()
+                lbl_provider.load_from_data(font_css)
+                lbl.get_style_context().add_provider(lbl_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+                box.pack_start(lbl, False, False, 0)
+
+                # Ensure box covers the line height and accommodates English length
+                est_w = max(item["width"], len(translated) * int(font_size * 0.65) + 16)
+                box.set_size_request(min(est_w, self.w), line_h)
+
+                # Place directly on top of the original words
+                pos_x = max(0, min(item["left"], self.w - 20))
+                pos_y = max(0, min(item["top"], self.h - 15))
+                self.fixed.put(box, pos_x, pos_y)
+
+            self.fixed.show_all()
+
+            # 6. Copy translated text to clipboard
+            if self.copy_clipboard and full_translations:
+                joined = "\n".join(full_translations)
+                subprocess.run(["wl-copy"], input=joined.encode("utf-8"), check=False)
 
         except Exception as e:
             print(f"Live translation tick error: {e}", file=sys.stderr)
 
-        return True  # Keep GLib timer alive
+        return True
 
     def run(self) -> None:
         """Starts the live monitoring loop."""
@@ -300,11 +311,9 @@ class LiveTranslator:
         gi.require_version('Gtk', '3.0')
         from gi.repository import Gtk, GLib
 
-        # Write current PID
         with open(get_pid_file(), "w") as f:
             f.write(str(os.getpid()))
 
-        # Register termination signal handlers
         def handle_signal(sig, frame):
             self.cleanup()
             Gtk.main_quit()
@@ -314,8 +323,6 @@ class LiveTranslator:
         signal.signal(signal.SIGINT, handle_signal)
 
         self.setup_ui()
-
-        # Run first tick immediately, then schedule recurring checks
         self.tick()
         GLib.timeout_add(self.interval_ms, self.tick)
 
@@ -338,7 +345,6 @@ def toggle_live(
         print("Live translation stopped.")
         return
 
-    # Start live translation
     if not has_layer_shell_support():
         notify_fallback("Live Mode Error", "Live mode requires gtk-layer-shell.", title="waytrans")
         return
