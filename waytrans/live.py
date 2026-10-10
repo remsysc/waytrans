@@ -114,6 +114,7 @@ class LiveTranslator:
 
         self.last_img_hash = ""
         self.last_combined_text = ""
+        self.empty_count = 0
         self.tmp_img = tempfile.mktemp(suffix=".png", prefix="waytrans_live_")
 
         self.running = False
@@ -242,14 +243,30 @@ class LiveTranslator:
             lbl_provider.load_from_data(font_css)
             lbl.get_style_context().add_provider(lbl_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
-            box.pack_start(lbl, False, False, 0)
-            ebox.add(box)
-
             est_w = max(item["width"], len(translated) * int(font_size * 0.65) + 16)
-            ebox.set_size_request(min(est_w, self.w), line_h)
+            pos_x = max(0, min(item["left"], max(0, self.w - 30)))
+            available_w = max(60, self.w - pos_x)
+            final_w = min(est_w, available_w)
+            ebox.set_size_request(final_w, line_h)
 
-            pos_x = max(0, min(item["left"], self.w - 20))
-            pos_y = max(0, min(item["top"], self.h - 15))
+            lbl.set_line_wrap(True)
+
+            # Position directly above the original Japanese text line (furigana/subtitle style).
+            # This ensures the camera (grim) never gets blinded by its own overlay!
+            if item["width"] < item["height"]:
+                # Vertical text (Manga style)
+                pos_y = max(0, item["top"])
+                if item["left"] >= final_w + 4:
+                    pos_x = item["left"] - final_w - 4
+                else:
+                    pos_x = item["left"] + item["width"] + 4
+            else:
+                # Horizontal text (Game dialogue / web news)
+                if item["top"] >= line_h + 2:
+                    pos_y = item["top"] - line_h - 2
+                else:
+                    pos_y = item["top"] + line_h + 2
+
             self.fixed.put(ebox, pos_x, pos_y)
 
         self.fixed.show_all()
@@ -297,11 +314,16 @@ class LiveTranslator:
 
                 self.last_combined_text = combined_text
 
-                # 4. If region is clear of text, clear overlay
+                # 4. If region is clear of text, clear overlay after 2 consecutive empty checks
                 if not boxes:
-                    GLib.idle_add(self.clear_overlay)
+                    self.empty_count += 1
+                    if self.empty_count >= 2:
+                        self.last_combined_text = ""
+                        GLib.idle_add(self.clear_overlay)
                     self.is_processing = False
                     continue
+
+                self.empty_count = 0
 
                 # 5. High-performance batch translation (1 network request for all lines)
                 raw_texts = [b["text"] for b in boxes]
