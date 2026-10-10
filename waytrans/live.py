@@ -230,8 +230,16 @@ class LiveTranslator:
         self.window.add(self.container)
         self.window.realize()
 
-        # Input shape combination makes window 100% click-through to games & browser
-        self.window.input_shape_combine_region(cairo.Region())
+        def apply_passthrough(*args):
+            reg = cairo.Region()
+            self.window.input_shape_combine_region(reg)
+            gdk_w = self.window.get_window()
+            if gdk_w:
+                gdk_w.input_shape_combine_region(reg, 0, 0)
+
+        self.apply_passthrough = apply_passthrough
+        self.window.connect("map", apply_passthrough)
+        self.apply_passthrough()
         self.window.show_all()
 
     def clear_subtitles(self) -> None:
@@ -240,6 +248,8 @@ class LiveTranslator:
             self.container.remove(widget)
         self.active_widgets.clear()
         self.container.show_all()
+        if hasattr(self, "apply_passthrough"):
+            self.apply_passthrough()
 
     def tick(self) -> bool:
         """Main polling cycle executed reliably on GTK timer."""
@@ -312,10 +322,14 @@ class LiveTranslator:
                 pos_y = scan_offset_y + item["top"] - max(int(item["height"] * 0.9), 24)
                 pos_y = max(pos_y, 0)
 
+                label.set_selectable(False)
+
                 self.container.put(label, pos_x, pos_y)
                 self.active_widgets.append(label)
 
             self.container.show_all()
+            if hasattr(self, "apply_passthrough"):
+                self.apply_passthrough()
 
             # 6. Copy newest dialogue to clipboard if enabled
             if self.copy_clipboard and translated_lines:
