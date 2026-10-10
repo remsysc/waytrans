@@ -82,6 +82,23 @@ def main() -> None:
         help="Polling interval in seconds for live translation (default: 0.5)."
     )
     parser.add_argument(
+        "--fullscreen",
+        action="store_true",
+        default=True,
+        help="Enable full-screen HUD mode without slurp selection (default: True)."
+    )
+    parser.add_argument(
+        "--region",
+        action="store_true",
+        help="Use interactive slurp region selection instead of fullscreen mode."
+    )
+    parser.add_argument(
+        "--zone",
+        choices=["all", "bottom"],
+        default="all",
+        help="Screen scan zone in live mode: 'all' (entire screen) or 'bottom' (bottom 35%% for game dialogue)."
+    )
+    parser.add_argument(
         "--stop-live",
         action="store_true",
         help="Stop any currently running live translation session."
@@ -109,12 +126,15 @@ def main() -> None:
 
     # Handle live toggle
     if args.live:
+        use_fullscreen = not args.region
         toggle_live(
             source_lang=args.source,
             target_lang=args.target,
             interval=args.interval,
             psm=args.psm,
-            copy_clipboard=not args.no_clipboard
+            copy_clipboard=not args.no_clipboard,
+            fullscreen=use_fullscreen,
+            dialogue_zone=args.zone if args.zone != "all" else None
         )
         sys.exit(0)
 
