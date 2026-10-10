@@ -1,7 +1,7 @@
 """
 Live dynamic screen translation module for Wayland.
-Watches a selected screen region, detects text changes, and updates
-an in-place click-through overlay in real time.
+Watches a selected screen region, detects text changes, and projects
+translated English text directly over the region in real-time.
 """
 
 import hashlib
@@ -10,8 +10,7 @@ import signal
 import subprocess
 import sys
 import tempfile
-import time
-from typing import Optional, Tuple
+from typing import Optional
 
 from waytrans.capture import capture_region, CaptureError
 from waytrans.ocr import run_ocr
@@ -36,11 +35,9 @@ def is_live_running() -> Optional[int]:
     try:
         with open(pid_path, "r") as f:
             pid = int(f.read().strip())
-        # Check if process is running (signal 0 doesn't kill it)
         os.kill(pid, 0)
         return pid
     except (ValueError, OSError):
-        # Stale PID file
         if os.path.exists(pid_path):
             try:
                 os.remove(pid_path)
@@ -72,10 +69,7 @@ def stop_live() -> bool:
 
 
 def compute_image_hash(image_path: str) -> str:
-    """
-    Computes a fast perceptual hash (aHash) using Pillow,
-    or falls back to MD5 if Pillow is unavailable.
-    """
+    """Computes a fast perceptual hash (aHash) or MD5."""
     try:
         from PIL import Image
         with Image.open(image_path) as img:
@@ -85,7 +79,6 @@ def compute_image_hash(image_path: str) -> str:
             bits = "".join("1" if p > avg else "0" for p in pixels)
             return hex(int(bits, 2))
     except Exception:
-        # Fallback to MD5 of raw file content
         hasher = hashlib.md5()
         with open(image_path, "rb") as f:
             hasher.update(f.read())
@@ -101,7 +94,7 @@ class LiveTranslator:
         h: int,
         source_lang: str = "ja",
         target_lang: str = "en",
-        interval_ms: int = 400,
+        interval_ms: int = 500,
         psm: int = 6,
         copy_clipboard: bool = True
     ):
@@ -123,7 +116,6 @@ class LiveTranslator:
         self.window = None
         self.en_label = None
         self.jp_label = None
-        self.status_label = None
 
     def cleanup(self) -> None:
         """Clean up temporary files and PID file."""
@@ -140,7 +132,7 @@ class LiveTranslator:
                 pass
 
     def setup_ui(self) -> None:
-        """Initializes the GtkLayerShell overlay window."""
+        """Initializes the GtkLayerShell overlay window directly over the watched region."""
         import gi
         import cairo
         gi.require_version('Gtk', '3.0')
@@ -162,12 +154,13 @@ class LiveTranslator:
         GtkLayerShell.set_layer(self.window, GtkLayerShell.Layer.OVERLAY)
         GtkLayerShell.set_namespace(self.window, "waytrans-live-overlay")
 
+        # Anchor window directly over the selected coordinates
         GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.TOP, True)
         GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.LEFT, True)
         GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.LEFT, local_x)
         GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.TOP, local_y)
 
-        # Keyboard mode none allows full typing underneath
+        # Allow typing in apps underneath
         GtkLayerShell.set_keyboard_mode(self.window, GtkLayerShell.KeyboardMode.NONE)
 
         screen = self.window.get_screen()
@@ -175,33 +168,28 @@ class LiveTranslator:
         if visual:
             self.window.set_visual(visual)
 
-        # CSS Styling
+        # High-contrast, clean overlay card styling
         css = b"""
         window {
-            background-color: rgba(17, 17, 27, 0.88);
-            border: 2px solid #a6e3a1;
+            background-color: rgba(16, 16, 24, 0.94);
+            border: 2px solid #89b4fa;
             border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
         }
         .container {
-            padding: 6px 12px;
-        }
-        .live-tag {
-            color: #a6e3a1;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+            padding: 8px 14px;
         }
         .translated-label {
-            color: #cdd6f4;
+            color: #ffffff;
             font-size: 15px;
             font-weight: 700;
+            letter-spacing: 0.2px;
         }
         .source-label {
             color: #a6adc8;
             font-size: 11px;
             font-weight: 400;
-            margin-top: 2px;
+            margin-top: 3px;
         }
         """
         css_provider = Gtk.CssProvider()
@@ -212,23 +200,20 @@ class LiveTranslator:
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         box.get_style_context().add_class("container")
-        box.set_size_request(min(self.w, 850), -1)
+        box.set_size_request(min(max(self.w, 180), 850), -1)
 
-        self.status_label = Gtk.Label(label="● LIVE TRANSLATING")
-        self.status_label.set_xalign(0.0)
-        self.status_label.get_style_context().add_class("live-tag")
-        box.pack_start(self.status_label, False, False, 0)
-
-        self.en_label = Gtk.Label(label="Waiting for text...")
+        # English translation (prominently on top)
+        self.en_label = Gtk.Label(label="Reading screen...")
         self.en_label.set_line_wrap(True)
-        self.en_label.set_max_width_chars(65)
+        self.en_label.set_max_width_chars(60)
         self.en_label.set_xalign(0.0)
         self.en_label.get_style_context().add_class("translated-label")
         box.pack_start(self.en_label, False, False, 0)
 
+        # Source Japanese text subtitle
         self.jp_label = Gtk.Label(label="")
         self.jp_label.set_line_wrap(True)
-        self.jp_label.set_max_width_chars(70)
+        self.jp_label.set_max_width_chars(65)
         self.jp_label.set_xalign(0.0)
         self.jp_label.get_style_context().add_class("source-label")
         box.pack_start(self.jp_label, False, False, 0)
@@ -236,14 +221,12 @@ class LiveTranslator:
         self.window.add(box)
         self.window.realize()
 
-        # CRITICAL: Make the window click-through so user can interact with game/manga beneath!
+        # Click-through: passes mouse events to games/browsers
         self.window.input_shape_combine_region(cairo.Region())
         self.window.show_all()
 
     def tick(self) -> bool:
-        """Single polling cycle executed on timer."""
-        from gi.repository import Gtk
-
+        """Main polling cycle executed reliably on GTK timer."""
         try:
             # 1. Capture watched region
             proc = subprocess.run(
@@ -254,45 +237,48 @@ class LiveTranslator:
             if proc.returncode != 0 or not os.path.exists(self.tmp_img):
                 return True
 
-            # 2. Check if screen region changed
+            # 2. Check if screen changed visually via fast perceptual hash
             img_hash = compute_image_hash(self.tmp_img)
             if img_hash == self.last_img_hash:
-                return True  # No visual change, skip OCR & translation
+                return True
 
             self.last_img_hash = img_hash
 
             # 3. Extract text via OCR
             text = run_ocr(self.tmp_img, lang=self.source_lang, psm=self.psm)
+            if not text:
+                # Retry with PSM 3 (auto page segmentation) for complex web news layouts
+                text = run_ocr(self.tmp_img, lang=self.source_lang, psm=3)
+
             if text == self.last_text:
-                return True  # Text content identical, do not retranslate
+                return True
 
             self.last_text = text
 
-            if not text:
-                # Text cleared from region
+            if not text.strip():
                 self.en_label.set_text("...")
                 self.jp_label.set_text("")
                 return True
 
-            # 4. Translate newly detected text
+            # 4. Translate text with in-memory cache
             translated = translate_text(
                 text,
                 source_lang=self.source_lang,
                 target_lang=self.target_lang
             )
 
-            # 5. Update UI in-place
+            # 5. Update UI in-place directly over the region
             self.en_label.set_text(translated)
             self.jp_label.set_text(text)
 
-            # 6. Clipboard sync if enabled
-            if self.copy_clipboard:
+            # 6. Copy to clipboard if enabled
+            if self.copy_clipboard and translated:
                 subprocess.run(["wl-copy"], input=translated.encode("utf-8"), check=False)
 
         except Exception as e:
-            print(f"Live translation tick error: {e}", file=sys.stderr)
+            print(f"Live translation error: {e}", file=sys.stderr)
 
-        return True  # Keep GLib timer alive
+        return True  # Keep GLib timer active
 
     def run(self) -> None:
         """Starts the live monitoring loop."""
@@ -300,11 +286,9 @@ class LiveTranslator:
         gi.require_version('Gtk', '3.0')
         from gi.repository import Gtk, GLib
 
-        # Write current PID
         with open(get_pid_file(), "w") as f:
             f.write(str(os.getpid()))
 
-        # Register termination signal handlers
         def handle_signal(sig, frame):
             self.cleanup()
             Gtk.main_quit()
@@ -315,7 +299,7 @@ class LiveTranslator:
 
         self.setup_ui()
 
-        # Run first tick immediately, then schedule recurring checks
+        # Run first tick immediately and schedule every interval
         self.tick()
         GLib.timeout_add(self.interval_ms, self.tick)
 
@@ -338,7 +322,6 @@ def toggle_live(
         print("Live translation stopped.")
         return
 
-    # Start live translation
     if not has_layer_shell_support():
         notify_fallback("Live Mode Error", "Live mode requires gtk-layer-shell.", title="waytrans")
         return
@@ -362,9 +345,13 @@ def toggle_live(
         except OSError:
             pass
 
+    if w < 25 or h < 15:
+        notify_fallback("Live Mode", "Selected region was too small. Please drag a box around the text.", title="waytrans")
+        return
+
     notify_fallback(
-        "Live Mode",
-        f"🟢 Live translation active ({w}x{h}). Press toggle hotkey again to stop.",
+        "Live Mode Active",
+        f"🟢 Watching {w}x{h} region. Press Super+Alt+L to stop.",
         title="waytrans"
     )
 
