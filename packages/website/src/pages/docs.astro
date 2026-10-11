@@ -1,0 +1,1198 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Button from '../components/Button.astro';
+import Card from '../components/Card.astro';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Documentation - waytrans</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body class="m-0 bg-white text-gray-900 font-medium overflow-x-hidden docs-page">
+    <div class="bg-grid-pattern min-h-screen">
+      <Header />
+      
+      <div class="flex w-full md:max-w-7xl md:mx-auto relative">
+        <!-- Mobile sidebar toggle button - positioned absolutely below navbar -->
+        <button 
+          id="mobile-sidebar-toggle" 
+          class="fixed top-20 left-4 z-40 md:hidden px-3 py-2 border-2 border-black rounded-lg bg-blue-500 text-white font-bold text-sm shadow-brutalist transition-opacity duration-300"
+        >
+          📚 Menu
+        </button>
+
+        <!-- Sidebar - absolutely positioned to overlay content -->
+        <nav 
+          id="sidebar" 
+          class="w-64 lg:w-80 bg-white border-r-2 border-black flex-shrink-0 
+                 hidden md:block fixed z-30 md:z-auto 
+                 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out
+                 flex flex-col
+                 left-0 top-0 bottom-0
+                 h-screen"
+        >
+          <!-- Fixed header section -->
+          <div class="p-4 lg:p-6 pt-20 md:pt-4 lg:md:pt-6 border-b-2 border-black flex-shrink-0">
+            <!-- Close button for mobile -->
+            <button 
+              id="sidebar-close" 
+              class="md:hidden w-full mb-4 px-3 py-2 border-2 border-black rounded-lg bg-blue-500 text-white font-bold text-sm shadow-brutalist"
+            >
+              ✕ Close Menu
+            </button>
+            
+            <!-- Search -->
+            <input 
+              type="text" 
+              id="search-input"
+              placeholder="Search docs..."
+              class="w-full px-4 py-2 border-2 border-black rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <!-- Scrollable navigation content -->
+          <div class="flex-1 overflow-y-auto p-4 lg:p-6 scrollbar-thin">
+            <!-- Navigation Sections -->
+            <div class="space-y-4">
+            <div>
+              <h3 class="font-bold text-sm uppercase tracking-widest mb-3 text-gray-600">Getting Started</h3>
+              <ul class="space-y-2">
+                <li><a href="#installation" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="installation">Installation</a></li>
+                <li><a href="#quick-start" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="quick-start">Quick Start</a></li>
+                <li><a href="#requirements" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="requirements">Requirements</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="font-bold text-sm uppercase tracking-widest mb-3 text-gray-600">Configuration</h3>
+              <ul class="space-y-2">
+                <li><a href="#keybindings" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="keybindings">Keybindings</a></li>
+                <li><a href="#hyprland" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="hyprland">Hyprland</a></li>
+                <li><a href="#sway" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="sway">Sway</a></li>
+                <li><a href="#river" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="river">River</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="font-bold text-sm uppercase tracking-widest mb-3 text-gray-600">Usage</h3>
+              <ul class="space-y-2">
+                <li><a href="#cli-flags" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="cli-flags">CLI Flags</a></li>
+                <li><a href="#live-mode" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="live-mode">Live Mode</a></li>
+                <li><a href="#languages" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="languages">Languages</a></li>
+                <li><a href="#ocr-models" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="ocr-models">OCR Models</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="font-bold text-sm uppercase tracking-widest mb-3 text-gray-600">Troubleshooting</h3>
+              <ul class="space-y-2">
+                <li><a href="#common-issues" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="common-issues">Common Issues</a></li>
+                <li><a href="#dependencies" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="dependencies">Dependencies</a></li>
+                <li><a href="#performance" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="performance">Performance</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="font-bold text-sm uppercase tracking-widest mb-3 text-gray-600">Development</h3>
+              <ul class="space-y-2">
+                <li><a href="#architecture" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="architecture">Architecture</a></li>
+                <li><a href="#contributing" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="contributing">Contributing</a></li>
+                <li><a href="#api" class="nav-link block py-1 px-2 rounded hover:bg-blue-50 text-sm" data-section="api">API Reference</a></li>
+              </ul>
+            </div>
+          </div>
+          </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 lg:p-8 pt-20 md:pt-6 w-full md:w-auto overflow-x-hidden">
+          <div class="mb-8">
+            <h1 class="text-4xl font-bold tracking-tight uppercase mb-4">Documentation</h1>
+            <p class="text-lg text-gray-600">Complete guide to using waytrans for in-place screen translation.</p>
+          </div>
+          <!-- Installation Section -->
+          <section id="installation" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Installation</h2>
+            
+            <Card class="mb-6">
+              <h3 class="font-bold text-lg mb-3">Quick Install (Recommended)</h3>
+              <p class="mb-4">Clone the repository and run the installer:</p>
+              <div class="bg-gray-100 border-2 border-black rounded-lg p-4 mb-4 overflow-x-auto">
+                <pre class="font-mono text-sm text-black whitespace-pre-wrap"><code>git clone https://github.com/remsysc/waytrans.git
+cd waytrans
+./install.sh</code></pre>
+              </div>
+              <p class="text-sm text-gray-600">This installs the binary to <code class="font-mono bg-gray-100 px-1 rounded">~/.local/bin/waytrans</code> and prompts you to download high-accuracy Japanese OCR models.</p>
+            </Card>
+
+            <Card>
+              <h3 class="font-bold text-lg mb-3">Python / Pip Install</h3>
+              <div class="bg-gray-100 border-2 border-black rounded-lg p-4 mb-4 overflow-x-auto">
+                <pre class="font-mono text-sm text-black whitespace-pre-wrap"><code>git clone https://github.com/remsysc/waytrans.git
+cd waytrans
+pip install --user .</code></pre>
+              </div>
+            </Card>
+          </section>
+
+          <!-- Requirements Section -->
+          <section id="requirements" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Requirements & Dependencies</h2>
+            
+            <p class="mb-4">waytrans relies on standard Linux Wayland and OCR utilities.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <h3 class="font-bold text-lg mb-3">Arch Linux / CachyOS / Manjaro</h3>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                  <pre class="font-mono text-xs text-black whitespace-pre"><code>sudo pacman -S grim slurp tesseract translate-shell \
+  wl-clipboard gtk-layer-shell python-gobject</code></pre>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">Fedora / RHEL</h3>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                  <pre class="font-mono text-xs text-black whitespace-pre"><code>sudo dnf install grim slurp tesseract translate-shell \
+  wl-clipboard gtk-layer-shell python3-gobject</code></pre>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">Ubuntu / Debian</h3>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                  <pre class="font-mono text-xs text-black whitespace-pre"><code>sudo apt install grim slurp tesseract-ocr translate-shell \
+  wl-clipboard libgtk-layer-shell0 python3-gi</code></pre>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">Optional</h3>
+                <p class="text-sm mb-2"><code class="font-mono bg-gray-100 px-1 rounded">imagemagick</code> for automated 2x contrast pre-processing on low-resolution text.</p>
+              </Card>
+            </div>
+          </section>
+
+          <!-- Quick Start Section -->
+          <section id="quick-start" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Quick Start</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <h3 class="font-bold text-lg mb-3">1. Setup Japanese Models</h3>
+                <p class="mb-3">For accurate Japanese character recognition:</p>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 mb-3 overflow-x-auto">
+                  <pre class="font-mono text-sm text-black whitespace-pre-wrap"><code>waytrans --setup-models</code></pre>
+                </div>
+                <p class="text-sm text-gray-600">This places <code class="font-mono bg-gray-100 px-1 rounded">jpn.traineddata</code> and <code class="font-mono bg-gray-100 px-1 rounded">jpn_vert.traineddata</code> into <code class="font-mono bg-gray-100 px-1 rounded">~/.local/share/tessdata/</code></p>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">2. Basic Usage</h3>
+                <p class="mb-3">Translate Japanese to English:</p>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 mb-3 overflow-x-auto">
+                  <pre class="font-mono text-sm text-black whitespace-pre-wrap"><code>waytrans -s ja -t en</code></pre>
+                </div>
+                <p class="text-sm text-gray-600">Drag a selection box around text, and the translation appears as an overlay.</p>
+              </Card>
+            </div>
+          </section>
+
+          <!-- Keybindings Section -->
+          <section id="keybindings" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Compositor Keybindings</h2>
+            
+            <p class="mb-6">Add shortcuts to your Wayland compositor configuration:</p>
+
+            <!-- Hyprland -->
+            <div id="hyprland" class="mb-8">
+              <Card>
+                <h3 class="font-bold text-lg mb-3 flex items-center gap-2">
+                  <span class="w-6 h-6 bg-blue-500 rounded border border-black"></span>
+                  Hyprland
+                </h3>
+                <p class="mb-3">In <code class="font-mono bg-gray-100 px-1 rounded">~/.config/hypr/hyprland.conf</code>:</p>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 mb-3 overflow-x-auto">
+                  <pre class="font-mono text-sm text-black whitespace-pre"><code># One-shot screen translation (Super + Alt + J)
+bind = SUPER_ALT, J, exec, waytrans -s ja -t en
+
+# Dynamic Live Translation toggle (Super + Alt + L)
+bind = SUPER_ALT, L, exec, waytrans --live -s ja -t en</code></pre>
+                </div>
+                <p class="text-sm text-gray-600">Or if you use Hyprland Lua configurations:</p>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                  <pre class="font-mono text-sm text-black whitespace-pre"><code>{`hl.bind("SUPER + ALT + J", 
+  hl.dsp.exec_cmd("waytrans -s ja -t en"), 
+  { description: "Translate screen JP to EN" })
+hl.bind("SUPER + ALT + L", 
+  hl.dsp.exec_cmd("waytrans --live -s ja -t en"), 
+  { description: "Toggle Live Translation" })`}</code></pre>
+                </div>
+              </Card>
+            </div>
+
+            <!-- Sway -->
+            <div id="sway" class="mb-8">
+              <Card>
+                <h3 class="font-bold text-lg mb-3 flex items-center gap-2">
+                  <span class="w-6 h-6 bg-green-500 rounded border border-black"></span>
+                  Sway
+                </h3>
+                <p class="mb-3">In <code class="font-mono bg-gray-100 px-1 rounded">~/.config/sway/config</code>:</p>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                  <pre class="font-mono text-sm text-black whitespace-pre"><code>bindsym $mod+Mod1+j exec waytrans -s ja -t en
+bindsym $mod+Mod1+l exec waytrans --live -s ja -t en</code></pre>
+                </div>
+              </Card>
+            </div>
+
+            <!-- River -->
+            <div id="river" class="mb-8">
+              <Card>
+                <h3 class="font-bold text-lg mb-3 flex items-center gap-2">
+                  <span class="w-6 h-6 bg-purple-500 rounded border border-black"></span>
+                  River
+                </h3>
+                <p class="mb-3">In <code class="font-mono bg-gray-100 px-1 rounded">~/.config/river/init</code>:</p>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                  <pre class="font-mono text-sm text-black whitespace-pre"><code>riverctl map normal Super+Alt J spawn "waytrans -s ja -t en"
+riverctl map normal Super+Alt L spawn "waytrans --live -s ja -t en"</code></pre>
+                </div>
+              </Card>
+            </div>
+          </section>
+          <!-- CLI Flags Section -->
+          <section id="cli-flags" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">CLI Usage & Flags</h2>
+            
+            <Card class="mb-6">
+              <div class="bg-gray-100 border-2 border-black rounded-lg p-4 mb-4 overflow-x-auto">
+                <pre class="font-mono text-sm text-black whitespace-pre"><code>usage: waytrans [-h] [-s SOURCE] [-t TARGET] [--timeout TIMEOUT] 
+                [--psm PSM] [--no-overlay] [--no-clipboard] 
+                [--notify] [-l] [--interval INTERVAL] 
+                [--stop-live] [--setup-models] [-v]</code></pre>
+              </div>
+            </Card>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <h3 class="font-bold text-lg mb-3">Basic Options</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm min-w-full">
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">-h, --help</td>
+                      <td class="py-2">Show help message and exit</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">-s, --source</td>
+                      <td class="py-2">Source language code (default: ja)</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">-t, --target</td>
+                      <td class="py-2">Target language code (default: en)</td>
+                    </tr>
+                    <tr>
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">-v, --version</td>
+                      <td class="py-2">Show version</td>
+                    </tr>
+                  </table>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">Overlay Options</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm min-w-full">
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">--timeout</td>
+                      <td class="py-2">Overlay timeout in seconds (default: 10, 0 = stay until clicked)</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">--no-overlay</td>
+                      <td class="py-2">Disable in-place overlay (desktop notification only)</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">--no-clipboard</td>
+                      <td class="py-2">Disable copying translation to clipboard</td>
+                    </tr>
+                    <tr>
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">--notify</td>
+                      <td class="py-2">Trigger a desktop notification alongside the overlay</td>
+                    </tr>
+                  </table>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">Live Mode Options</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm min-w-full">
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">-l, --live</td>
+                      <td class="py-2">Toggle dynamic live translation mode on or off</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">--interval</td>
+                      <td class="py-2">Polling interval in seconds for live translation (default: 0.5)</td>
+                    </tr>
+                    <tr>
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">--stop-live</td>
+                      <td class="py-2">Stop any currently running live translation session</td>
+                    </tr>
+                  </table>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">OCR Options</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm min-w-full">
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">--psm</td>
+                      <td class="py-2">Tesseract Page Segmentation Mode (default: 6)</td>
+                    </tr>
+                    <tr>
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">--setup-models</td>
+                      <td class="py-2">Download high-accuracy Japanese OCR models</td>
+                    </tr>
+                  </table>
+                </div>
+              </Card>
+            </div>
+
+            <Card class="mt-6">
+              <h3 class="font-bold text-lg mb-3">Example Commands</h3>
+              <div class="space-y-4">
+                <div>
+                  <p class="font-medium mb-2">One-shot translation:</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-sm text-black">waytrans</code>
+                  </div>
+                </div>
+                
+                <div>
+                  <p class="font-medium mb-2">Toggle Live / Dynamic translation:</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-sm text-black">waytrans -l</code>
+                  </div>
+                </div>
+
+                <div>
+                  <p class="font-medium mb-2">Chinese (Simplified) to English in live mode:</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-sm text-black">waytrans -l -s zh -t en</code>
+                  </div>
+                </div>
+
+                <div>
+                  <p class="font-medium mb-2">German to English with 20-second timeout:</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-sm text-black">waytrans -s de -t en --timeout 20</code>
+                  </div>
+                </div>
+
+                <div>
+                  <p class="font-medium mb-2">Notification-only mode (no overlay):</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-sm text-black">waytrans --no-overlay</code>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </section>
+          <!-- Live Mode Section -->
+          <section id="live-mode" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Live Translation Mode</h2>
+            
+            <Card class="mb-6">
+              <h3 class="font-bold text-lg mb-3">🔄 Dynamic Live Translation</h3>
+              <p class="mb-4">Toggle it on and waytrans continuously watches dialogue boxes or manga panels, detects new incoming text via perceptual hashing, and dynamically updates the translation in-place!</p>
+              
+              <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
+                <h4 class="font-bold mb-2">Features:</h4>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li><strong>Click-Through:</strong> Allows full mouse pass-through during live mode</li>
+                  <li><strong>Perceptual Hashing:</strong> Detects new text automatically</li>
+                  <li><strong>Real-time Updates:</strong> Translation updates without manual intervention</li>
+                  <li><strong>Game Compatible:</strong> Click to advance dialogue without interruption</li>
+                </ul>
+              </div>
+
+              <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                <pre class="font-mono text-sm text-black whitespace-pre"><code># Start live mode
+waytrans --live -s ja -t en
+
+# Stop live mode
+waytrans --stop-live
+
+# Custom polling interval (default: 0.5s)
+waytrans --live --interval 1.0</code></pre>
+              </div>
+            </Card>
+          </section>
+
+          <!-- Languages Section -->
+          <section id="languages" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Supported Languages</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <h3 class="font-bold text-lg mb-3">Common Language Codes</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm min-w-full">
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">ja</td>
+                      <td class="py-2">Japanese</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">en</td>
+                      <td class="py-2">English</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">zh</td>
+                      <td class="py-2">Chinese (Simplified)</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">ko</td>
+                      <td class="py-2">Korean</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">de</td>
+                      <td class="py-2">German</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">fr</td>
+                      <td class="py-2">French</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">es</td>
+                      <td class="py-2">Spanish</td>
+                    </tr>
+                    <tr>
+                      <td class="font-mono font-bold py-2 pr-4 whitespace-nowrap">ru</td>
+                      <td class="py-2">Russian</td>
+                    </tr>
+                  </table>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">CJK Optimization</h3>
+                <p class="mb-4">waytrans is optimized for Japanese and CJK languages:</p>
+                <ul class="list-disc list-inside space-y-2 text-sm">
+                  <li><strong>Horizontal & Vertical Text:</strong> Handles both <code class="font-mono bg-gray-100 px-1 rounded">jpn</code> and <code class="font-mono bg-gray-100 px-1 rounded">jpn_vert</code></li>
+                  <li><strong>OCR Cleanup:</strong> Removes space insertion artifacts</li>
+                  <li><strong>High Accuracy Models:</strong> Supports <code class="font-mono bg-gray-100 px-1 rounded">tessdata_best</code> models</li>
+                  <li><strong>Furigana Support:</strong> Better recognition of complex kanji with furigana</li>
+                </ul>
+              </Card>
+            </div>
+          </section>
+
+          <!-- OCR Models Section -->
+          <section id="ocr-models" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">OCR Models</h2>
+            
+            <Card class="mb-6">
+              <h3 class="font-bold text-lg mb-3">Setting Up Japanese Models</h3>
+              <p class="mb-4">For accurate Japanese character recognition, download the official <code class="font-mono bg-gray-100 px-1 rounded">tessdata_best</code> models:</p>
+              
+              <div class="bg-gray-100 border-2 border-black rounded-lg p-4 mb-4">
+                <pre class="font-mono text-sm text-black"><code>waytrans --setup-models</code></pre>
+              </div>
+
+              <p class="mb-4">This places the following files into <code class="font-mono bg-gray-100 px-1 rounded">~/.local/share/tessdata/</code>:</p>
+              <ul class="list-disc list-inside space-y-1 text-sm">
+                <li><code class="font-mono bg-gray-100 px-1 rounded">jpn.traineddata</code> - Horizontal Japanese text</li>
+                <li><code class="font-mono bg-gray-100 px-1 rounded">jpn_vert.traineddata</code> - Vertical Japanese text</li>
+              </ul>
+            </Card>
+
+            <Card>
+              <h3 class="font-bold text-lg mb-3">Model Accuracy Comparison</h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b-2 border-black">
+                      <th class="text-left py-3 pr-4">Model Type</th>
+                      <th class="text-left py-3 pr-4">Accuracy</th>
+                      <th class="text-left py-3 pr-4">Speed</th>
+                      <th class="text-left py-3">Use Case</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="border-b border-gray-200">
+                      <td class="py-3 pr-4 font-mono">tessdata_fast</td>
+                      <td class="py-3 pr-4">⭐⭐⭐</td>
+                      <td class="py-3 pr-4">⚡⚡⚡</td>
+                      <td class="py-3">Basic text, simple fonts</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="py-3 pr-4 font-mono">tessdata</td>
+                      <td class="py-3 pr-4">⭐⭐⭐⭐</td>
+                      <td class="py-3 pr-4">⚡⚡</td>
+                      <td class="py-3">General purpose</td>
+                    </tr>
+                    <tr>
+                      <td class="py-3 pr-4 font-mono">tessdata_best</td>
+                      <td class="py-3 pr-4">⭐⭐⭐⭐⭐</td>
+                      <td class="py-3 pr-4">⚡</td>
+                      <td class="py-3">Manga, games, stylized fonts</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </section>
+
+          <!-- Architecture Section -->
+          <section id="architecture" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Architecture</h2>
+            
+            <Card>
+              <pre class="font-mono text-xs text-black leading-relaxed">[ User presses Hotkey ]
+          │
+          ▼
+   [ slurp ] ───► Interactive drag selection (X, Y, W, H)
+          │
+          ▼
+   [ grim ] ────► Screenshot cropped region
+          │
+          ▼
+ [ ImageMagick ]► Optional 2x upscale & grayscale preprocessing
+          │
+          ▼
+ [ Tesseract ] ─► OCR recognition (horizontal + vertical CJK cleanup)
+          │
+          ▼
+[ translate-shell ] ► Translate source to target language
+          │
+          ├─────────────────────────┬─────────────────────────┐
+          ▼                         ▼                         ▼
+   [ wl-clipboard ]       [ GtkLayerShell Overlay ]    [ Desktop Notification ]
+   (Copied to clipboard)    (Floating in-place card)     (Optional / Fallback)</pre>
+            </Card>
+          </section>
+
+          <!-- Contributing Section -->
+          <section id="contributing" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Contributing</h2>
+            
+            <Card class="mb-6">
+              <h3 class="font-bold text-lg mb-3">🤝 How to Contribute</h3>
+              <p class="mb-4">We welcome contributions to waytrans! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.</p>
+              
+              <div class="space-y-4">
+                <div>
+                  <h4 class="font-bold mb-2">1. Fork and Clone</h4>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                    <pre class="font-mono text-sm text-black whitespace-pre"><code>git clone https://github.com/YOUR-USERNAME/waytrans.git
+cd waytrans
+git checkout -b feature/your-feature-name</code></pre>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 class="font-bold mb-2">2. Set up Development Environment</h4>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                    <pre class="font-mono text-sm text-black whitespace-pre"><code># Install dependencies (see Requirements section)
+sudo pacman -S grim slurp tesseract translate-shell \
+  wl-clipboard gtk-layer-shell python-gobject
+
+# Install in development mode
+pip install -e .</code></pre>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 class="font-bold mb-2">3. Make Your Changes</h4>
+                  <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>Follow the existing code style and conventions</li>
+                    <li>Add tests for new functionality</li>
+                    <li>Update documentation if needed</li>
+                    <li>Test on multiple window managers if possible</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 class="font-bold mb-2">4. Submit Pull Request</h4>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                    <pre class="font-mono text-sm text-black whitespace-pre"><code>git add .
+git commit -m "feat: add your feature description"
+git push origin feature/your-feature-name</code></pre>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <h3 class="font-bold text-lg mb-3">🐛 Bug Reports</h3>
+                <p class="mb-3">Found a bug? Please include:</p>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li>Your Linux distribution and version</li>
+                  <li>Wayland compositor (Hyprland, Sway, etc.)</li>
+                  <li>Python version and waytrans version</li>
+                  <li>Steps to reproduce the issue</li>
+                  <li>Expected vs actual behavior</li>
+                  <li>Error messages or logs</li>
+                </ul>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">💡 Feature Requests</h3>
+                <p class="mb-3">Have an idea? We'd love to hear it:</p>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li>Describe the feature clearly</li>
+                  <li>Explain the use case and benefits</li>
+                  <li>Consider implementation complexity</li>
+                  <li>Check existing issues first</li>
+                  <li>Be open to alternative approaches</li>
+                </ul>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">📝 Code Style</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li>Follow PEP 8 for Python code</li>
+                  <li>Use meaningful variable names</li>
+                  <li>Add docstrings for functions</li>
+                  <li>Keep functions focused and small</li>
+                  <li>Comment complex logic</li>
+                  <li>Use type hints where helpful</li>
+                </ul>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">🔍 Testing Areas</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                  <li>Different window managers</li>
+                  <li>Various display configurations</li>
+                  <li>Multiple language pairs</li>
+                  <li>OCR accuracy with different fonts</li>
+                  <li>Live mode performance</li>
+                  <li>Error handling edge cases</li>
+                </ul>
+              </Card>
+            </div>
+
+            <Card class="mt-6">
+              <h3 class="font-bold text-lg mb-3">🏗️ Development Priorities</h3>
+              <p class="mb-3">Areas where contributions are especially welcome:</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 class="font-bold mb-2">High Priority</h4>
+                  <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>Performance optimizations</li>
+                    <li>Better OCR accuracy</li>
+                    <li>New language support</li>
+                    <li>Compositor compatibility</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 class="font-bold mb-2">Medium Priority</h4>
+                  <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>UI/UX improvements</li>
+                    <li>Configuration options</li>
+                    <li>Documentation updates</li>
+                    <li>Test suite expansion</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+          </section>
+
+          <!-- API Reference Section -->
+          <section id="api" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">API Reference</h2>
+            
+            <Card class="mb-6">
+              <h3 class="font-bold text-lg mb-3">📚 Core Modules</h3>
+              <p class="mb-4">waytrans is organized into several key modules:</p>
+              
+              <div class="space-y-4">
+                <div class="bg-gray-50 border-l-4 border-blue-500 p-4">
+                  <h4 class="font-bold mb-2"><code class="font-mono bg-gray-100 px-1 rounded">waytrans.cli</code></h4>
+                  <p class="text-sm">Command-line interface and argument parsing. Entry point for the application.</p>
+                </div>
+                
+                <div class="bg-gray-50 border-l-4 border-green-500 p-4">
+                  <h4 class="font-bold mb-2"><code class="font-mono bg-gray-100 px-1 rounded">waytrans.capture</code></h4>
+                  <p class="text-sm">Screen capture functionality using slurp and grim for Wayland.</p>
+                </div>
+                
+                <div class="bg-gray-50 border-l-4 border-purple-500 p-4">
+                  <h4 class="font-bold mb-2"><code class="font-mono bg-gray-100 px-1 rounded">waytrans.ocr</code></h4>
+                  <p class="text-sm">OCR processing with Tesseract, including CJK text handling and preprocessing.</p>
+                </div>
+                
+                <div class="bg-gray-50 border-l-4 border-orange-500 p-4">
+                  <h4 class="font-bold mb-2"><code class="font-mono bg-gray-100 px-1 rounded">waytrans.translator</code></h4>
+                  <p class="text-sm">Translation interface using translate-shell for multiple language pairs.</p>
+                </div>
+                
+                <div class="bg-gray-50 border-l-4 border-red-500 p-4">
+                  <h4 class="font-bold mb-2"><code class="font-mono bg-gray-100 px-1 rounded">waytrans.overlay</code></h4>
+                  <p class="text-sm">GTK Layer Shell overlay rendering for in-place translation display.</p>
+                </div>
+                
+                <div class="bg-gray-50 border-l-4 border-indigo-500 p-4">
+                  <h4 class="font-bold mb-2"><code class="font-mono bg-gray-100 px-1 rounded">waytrans.live</code></h4>
+                  <p class="text-sm">Live translation mode with perceptual hashing and continuous monitoring.</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <h3 class="font-bold text-lg mb-3">🔧 Key Functions</h3>
+              <div class="space-y-4 text-sm">
+                <div>
+                  <h4 class="font-mono font-bold">capture_screen_region()</h4>
+                  <p class="text-gray-600 mb-2">Captures a user-selected region of the screen</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-xs text-black">Returns: (x, y, width, height, image_path)</code>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 class="font-mono font-bold">extract_text(image_path, lang='ja')</h4>
+                  <p class="text-gray-600 mb-2">Extracts text from image using Tesseract OCR</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-xs text-black">Returns: extracted_text (str)</code>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 class="font-mono font-bold">translate_text(text, source='ja', target='en')</h4>
+                  <p class="text-gray-600 mb-2">Translates text between language pairs</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-xs text-black">Returns: translated_text (str)</code>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 class="font-mono font-bold">show_overlay(text, x, y, timeout=10)</h4>
+                  <p class="text-gray-600 mb-2">Displays translation overlay at specified coordinates</p>
+                  <div class="bg-gray-100 border-2 border-black rounded-lg p-3 overflow-x-auto">
+                    <code class="font-mono text-xs text-black">Returns: None</code>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </section>
+
+          <!-- Dependencies Section -->
+          <section id="dependencies" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Dependencies</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <h3 class="font-bold text-lg mb-3">📦 Core Dependencies</h3>
+                <div class="space-y-3">
+                  <div class="bg-blue-50 border-l-4 border-blue-500 p-3">
+                    <h4 class="font-bold text-sm">grim</h4>
+                    <p class="text-sm text-gray-600">Wayland screenshot utility for screen capture</p>
+                  </div>
+                  <div class="bg-green-50 border-l-4 border-green-500 p-3">
+                    <h4 class="font-bold text-sm">slurp</h4>
+                    <p class="text-sm text-gray-600">Interactive region selection for Wayland</p>
+                  </div>
+                  <div class="bg-purple-50 border-l-4 border-purple-500 p-3">
+                    <h4 class="font-bold text-sm">tesseract-ocr</h4>
+                    <p class="text-sm text-gray-600">OCR engine for text extraction</p>
+                  </div>
+                  <div class="bg-orange-50 border-l-4 border-orange-500 p-3">
+                    <h4 class="font-bold text-sm">translate-shell</h4>
+                    <p class="text-sm text-gray-600">Command-line translator interface</p>
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">🎨 UI Dependencies</h3>
+                <div class="space-y-3">
+                  <div class="bg-red-50 border-l-4 border-red-500 p-3">
+                    <h4 class="font-bold text-sm">gtk-layer-shell</h4>
+                    <p class="text-sm text-gray-600">GTK library for Wayland layer shell protocol</p>
+                  </div>
+                  <div class="bg-indigo-50 border-l-4 border-indigo-500 p-3">
+                    <h4 class="font-bold text-sm">python-gobject</h4>
+                    <p class="text-sm text-gray-600">Python bindings for GTK and GObject</p>
+                  </div>
+                  <div class="bg-yellow-50 border-l-4 border-yellow-500 p-3">
+                    <h4 class="font-bold text-sm">wl-clipboard</h4>
+                    <p class="text-sm text-gray-600">Wayland clipboard utilities</p>
+                  </div>
+                  <div class="bg-gray-50 border-l-4 border-gray-500 p-3">
+                    <h4 class="font-bold text-sm">imagemagick</h4>
+                    <p class="text-sm text-gray-600">Optional: Image processing for OCR enhancement</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <Card class="mt-6">
+              <h3 class="font-bold text-lg mb-3">🔍 Checking Dependencies</h3>
+              <p class="mb-3">Verify all dependencies are installed:</p>
+              <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                <pre class="font-mono text-sm text-black whitespace-pre"><code># Check if all tools are available
+which grim slurp tesseract trans wl-copy
+
+# Check Python packages
+python -c "import gi; print('python-gobject: OK')"
+
+# Check GTK Layer Shell
+pkg-config --exists gtk-layer-shell && echo "gtk-layer-shell: OK"</code></pre>
+              </div>
+            </Card>
+          </section>
+
+          <!-- Performance Section -->
+          <section id="performance" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Performance</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <h3 class="font-bold text-lg mb-3">⚡ Optimization Tips</h3>
+                <ul class="space-y-3 text-sm">
+                  <li class="flex items-start gap-2">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span><strong>Use tessdata_best models</strong> for better accuracy vs speed trade-off</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span><strong>Adjust live mode interval</strong> based on your needs (default: 0.5s)</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span><strong>Use specific PSM modes</strong> for your text type (--psm flag)</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span><strong>Close unnecessary applications</strong> during intensive OCR work</span>
+                  </li>
+                </ul>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">📊 Performance Factors</h3>
+                <div class="space-y-3 text-sm">
+                  <div>
+                    <h4 class="font-bold mb-1">OCR Speed</h4>
+                    <p class="text-gray-600">Depends on image size, text complexity, and Tesseract model</p>
+                  </div>
+                  <div>
+                    <h4 class="font-bold mb-1">Translation Speed</h4>
+                    <p class="text-gray-600">Network latency affects online translation services</p>
+                  </div>
+                  <div>
+                    <h4 class="font-bold mb-1">Live Mode Impact</h4>
+                    <p class="text-gray-600">Continuous monitoring uses CPU; adjust interval as needed</p>
+                  </div>
+                  <div>
+                    <h4 class="font-bold mb-1">Memory Usage</h4>
+                    <p class="text-gray-600">Overlay rendering and image processing require moderate RAM</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <Card class="mt-6">
+              <h3 class="font-bold text-lg mb-3">🎯 Benchmarks</h3>
+              <p class="mb-4">Typical performance on modern hardware:</p>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm min-w-full">
+                  <thead>
+                    <tr class="border-b-2 border-black">
+                      <th class="text-left py-2 pr-4">Operation</th>
+                      <th class="text-left py-2 pr-4">Avg Time</th>
+                      <th class="text-left py-2">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="border-b border-gray-200">
+                      <td class="py-2 pr-4 font-mono">Screen Capture</td>
+                      <td class="py-2 pr-4">~50-100ms</td>
+                      <td class="py-2">Depends on region size</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="py-2 pr-4 font-mono">OCR Processing</td>
+                      <td class="py-2 pr-4">~200-800ms</td>
+                      <td class="py-2">Varies with text complexity</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                      <td class="py-2 pr-4 font-mono">Translation</td>
+                      <td class="py-2 pr-4">~100-500ms</td>
+                      <td class="py-2">Network dependent</td>
+                    </tr>
+                    <tr>
+                      <td class="py-2 pr-4 font-mono">Overlay Display</td>
+                      <td class="py-2 pr-4">~10-50ms</td>
+                      <td class="py-2">GTK rendering time</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </section>
+
+          <!-- Common Issues Section -->
+          <section id="common-issues" class="doc-section mb-12">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-black pb-2">Troubleshooting</h2>
+            
+            <div class="space-y-6">
+              <Card>
+                <h3 class="font-bold text-lg mb-3">❓ The overlay does not appear, only a notification shows up</h3>
+                <p class="mb-3">Ensure <code class="font-mono bg-gray-100 px-1 rounded">gtk-layer-shell</code> and <code class="font-mono bg-gray-100 px-1 rounded">python-gobject</code> are installed on your system.</p>
+                <div class="bg-gray-100 border-2 border-black rounded-lg p-4 overflow-x-auto">
+                  <pre class="font-mono text-sm text-black whitespace-pre"><code># Check if packages are installed
+pacman -Q gtk-layer-shell python-gobject  # Arch
+dpkg -l | grep -E "(gtk-layer-shell|python3-gi)"  # Ubuntu</code></pre>
+                </div>
+                <p class="mt-3 text-sm text-gray-600">waytrans automatically falls back to notifications if the layer-shell library cannot be loaded.</p>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">❓ Tesseract misreads stylized Japanese fonts or vertical text</h3>
+                <p class="mb-3">Run <code class="font-mono bg-gray-100 px-1 rounded">waytrans --setup-models</code> to install the <code class="font-mono bg-gray-100 px-1 rounded">tessdata_best</code> models.</p>
+                <p class="text-sm text-gray-600">They are significantly more accurate for complex kanji and furigana than the default distro <code class="font-mono bg-gray-100 px-1 rounded">tessdata_fast</code> packages.</p>
+              </Card>
+
+              <Card>
+                <h3 class="font-bold text-lg mb-3">❓ How do I change the overlay colors or theme?</h3>
+                <p class="mb-3">The overlay is styled via CSS inside <code class="font-mono bg-gray-100 px-1 rounded">waytrans/overlay.py</code>.</p>
+                <p class="text-sm text-gray-600">You can adjust border color, background opacity, and font sizing to match your desktop rice.</p>
+              </Card>
+            </div>
+          </section>
+
+        </main>
+      </div>
+    </div>
+    <script>
+      // Mobile sidebar functionality
+      const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
+      const sidebarCloseBtn = document.getElementById('sidebar-close');
+      const sidebar = document.getElementById('sidebar');
+      let sidebarOpen = false;
+      
+      mobileSidebarToggle?.addEventListener('click', () => {
+        sidebarOpen = !sidebarOpen;
+        
+        if (sidebarOpen) {
+          // Show sidebar and slide in
+          sidebar?.classList.remove('hidden');
+          setTimeout(() => {
+            sidebar?.classList.remove('-translate-x-full');
+            sidebar?.classList.add('translate-x-0');
+          }, 10);
+          // Hide the floating toggle button when sidebar is open
+          mobileSidebarToggle.classList.add('opacity-0', 'pointer-events-none');
+        } else {
+          closeSidebar();
+        }
+      });
+
+      sidebarCloseBtn?.addEventListener('click', closeSidebar);
+
+      function closeSidebar() {
+        sidebar?.classList.add('-translate-x-full');
+        sidebar?.classList.remove('translate-x-0');
+        // Show the floating toggle button when sidebar is closed
+        mobileSidebarToggle?.classList.remove('opacity-0', 'pointer-events-none');
+        sidebarOpen = false;
+        // Hide sidebar completely after animation
+        setTimeout(() => {
+          if (!sidebarOpen) {
+            sidebar?.classList.add('hidden');
+          }
+        }, 300);
+      }
+
+      // Close sidebar when clicking on navigation links (mobile)
+      navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 768 && sidebarOpen) {
+            closeSidebar();
+          }
+        });
+      });
+
+      // Close sidebar on window resize to desktop
+      window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768 && sidebarOpen) {
+          closeSidebar();
+        }
+      });
+
+      // Search functionality
+      const searchInput = document.getElementById('search-input');
+      const docSections = document.querySelectorAll('.doc-section');
+      const navLinks = document.querySelectorAll('.nav-link');
+      
+      // Search implementation
+      searchInput?.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase().trim();
+        
+        docSections.forEach(section => {
+          const content = section.textContent?.toLowerCase() || '';
+          const shouldShow = searchTerm === '' || content.includes(searchTerm);
+          
+          if (shouldShow) {
+            section.style.display = 'block';
+            // Highlight search terms
+            if (searchTerm) {
+              highlightSearchTerms(section, searchTerm);
+            } else {
+              removeHighlights(section);
+            }
+          } else {
+            section.style.display = 'none';
+          }
+        });
+
+        // Update navigation visibility
+        navLinks.forEach(link => {
+          const sectionId = link.getAttribute('data-section');
+          const section = document.getElementById(sectionId);
+          const listItem = link.parentElement;
+          
+          if (section && section.style.display !== 'none') {
+            listItem.style.display = 'block';
+          } else if (searchTerm) {
+            listItem.style.display = 'none';
+          } else {
+            listItem.style.display = 'block';
+          }
+        });
+      });
+
+      // Highlight search terms
+      function highlightSearchTerms(element, searchTerm) {
+        removeHighlights(element);
+        
+        const walker = document.createTreeWalker(
+          element,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+
+        const textNodes = [];
+        let node;
+        while (node = walker.nextNode()) {
+          textNodes.push(node);
+        }
+
+        textNodes.forEach(textNode => {
+          const content = textNode.textContent;
+          const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+          
+          if (regex.test(content)) {
+            const highlightedContent = content.replace(regex, '<mark class="bg-yellow-200 px-1 rounded">$1</mark>');
+            const wrapper = document.createElement('span');
+            wrapper.innerHTML = highlightedContent;
+            textNode.parentNode?.replaceChild(wrapper, textNode);
+          }
+        });
+      }
+
+      // Remove highlights
+      function removeHighlights(element) {
+        const marks = element.querySelectorAll('mark');
+        marks.forEach(mark => {
+          const parent = mark.parentNode;
+          parent?.replaceChild(document.createTextNode(mark.textContent), mark);
+          parent?.normalize();
+        });
+      }
+
+      // Escape special regex characters
+      function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+
+      // Navigation functionality
+      navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const sectionId = link.getAttribute('data-section');
+          const section = document.getElementById(sectionId);
+          
+          if (section) {
+            // Update active navigation
+            navLinks.forEach(l => l.classList.remove('bg-blue-100', 'text-blue-700', 'font-bold'));
+            link.classList.add('bg-blue-100', 'text-blue-700', 'font-bold');
+            
+            // Smooth scroll to section
+            section.scrollIntoView({ 
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+        });
+      });
+
+      // Update navigation on scroll
+      const observerOptions = {
+        root: null,
+        rootMargin: '-20% 0px -60% 0px',
+        threshold: 0
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const sectionId = entry.target.id;
+            const activeLink = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (activeLink) {
+              navLinks.forEach(l => l.classList.remove('bg-blue-100', 'text-blue-700', 'font-bold'));
+              activeLink.classList.add('bg-blue-100', 'text-blue-700', 'font-bold');
+            }
+          }
+        });
+      }, observerOptions);
+
+      // Observe all sections
+      docSections.forEach(section => {
+        observer.observe(section);
+      });
+
+      // Handle initial hash navigation
+      if (window.location.hash) {
+        const targetSection = document.querySelector(window.location.hash);
+        if (targetSection) {
+          setTimeout(() => {
+            targetSection.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        // Ctrl/Cmd + K to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+          e.preventDefault();
+          searchInput?.focus();
+        }
+        
+        // Escape to clear search
+        if (e.key === 'Escape' && document.activeElement === searchInput) {
+          searchInput.value = '';
+          searchInput.dispatchEvent(new Event('input'));
+          searchInput.blur();
+        }
+      });
+    </script>
+  </body>
+</html>

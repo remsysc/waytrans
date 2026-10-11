@@ -1,0 +1,55 @@
+---
+import Button from './Button.astro';
+---
+
+<header class="bg-white border-b-2 border-black sticky top-0 z-50">
+  <div class="max-w-6xl mx-auto px-5 flex items-center gap-4 h-16">
+    <a href="/" class="flex items-center gap-2 font-bold text-2xl tracking-tight no-underline">
+      <img src="/images/logo.png" alt="waytrans logo" class="w-10 h-10 rounded-lg border-2 border-black p-1.5" style="background-color: #4f8cff;" />
+      <span class="hidden sm:inline">waytrans</span>
+    </a>
+    
+    <!-- Mobile menu button -->
+    <button id="mobile-menu-btn" class="ml-auto md:hidden p-2 font-bold text-2xl" aria-label="Toggle menu">
+      ☰
+    </button>
+    
+    <!-- Desktop nav -->
+    <nav class="hidden md:flex ml-auto gap-6 items-center">
+      <a href="/#install" class="font-bold tracking-widest uppercase text-xs no-underline hover:text-blue-600">Install</a>
+      <a href="/#how" class="font-bold tracking-widest uppercase text-xs no-underline hover:text-blue-600">How</a>
+      <a href="/docs" class="font-bold tracking-widest uppercase text-xs no-underline hover:text-blue-600">Docs</a>
+      <Button variant="primary" href="https://github.com/remsysc/waytrans" target="_blank" rel="noopener">
+        ★ GitHub
+      </Button>
+    </nav>
+  </div>
+  
+  <!-- Mobile nav - absolutely positioned -->
+  <nav id="mobile-menu" class="hidden md:hidden absolute top-16 left-0 right-0 border-b-2 border-black bg-white shadow-lg">
+    <div class="flex flex-col p-4 gap-3">
+      <a href="/#install" class="font-bold tracking-widest uppercase text-xs no-underline hover:text-blue-600 py-2">Install</a>
+      <a href="/#how" class="font-bold tracking-widest uppercase text-xs no-underline hover:text-blue-600 py-2">How</a>
+      <a href="/docs" class="font-bold tracking-widest uppercase text-xs no-underline hover:text-blue-600 py-2">Docs</a>
+      <a href="https://github.com/remsysc/waytrans" target="_blank" rel="noopener" class="inline-block text-center px-4 py-2 font-bold text-sm bg-blue-500 text-white border-2 border-black rounded-lg shadow-brutalist no-underline">
+        ★ GitHub
+      </a>
+    </div>
+  </nav>
+</header>
+
+<script>
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  
+  mobileMenuBtn?.addEventListener('click', () => {
+    mobileMenu?.classList.toggle('hidden');
+  });
+  
+  // Close menu when clicking a link
+  mobileMenu?.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      mobileMenu.classList.add('hidden');
+    });
+  });
+</script>

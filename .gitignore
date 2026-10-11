@@ -8,3 +8,4 @@ build/
 .coverage
 /tmp/
 *.png
+!packages/website/public/images/*.png

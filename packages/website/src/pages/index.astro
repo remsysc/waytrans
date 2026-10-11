@@ -1,0 +1,329 @@
+---
+// Frontmatter - server-side code
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
+import Button from '../components/Button.astro';
+import Card from '../components/Card.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import FeatureCard from '../components/FeatureCard.astro';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="generator" content={Astro.generator} />
+    <title>waytrans — in-place screen translator for Wayland</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body class="m-0 bg-white text-gray-900 font-medium overflow-x-hidden">
+    <!-- Grid background pattern will be added with Tailwind -->
+    <div class="bg-grid-pattern">
+      <Header />
+      <!-- Main Content -->
+      <main id="top" class="max-w-6xl mx-auto px-5">
+        <Hero />
+
+        <!-- Demo Stage -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-9 items-center my-11 mb-18">
+          <!-- Screen Demo -->
+          <div class="border-2 border-black shadow-brutalist rounded-lg p-0 bg-gray-800 overflow-hidden relative">
+            <!-- Window Bar -->
+            <div class="flex gap-2 p-3 bg-blue-100 border-b-2 border-black">
+              <div class="w-3 h-3 rounded-full border-2 border-black bg-white"></div>
+              <div class="w-3 h-3 rounded-full border-2 border-black bg-blue-500"></div>
+              <div class="w-3 h-3 rounded-full border-2 border-black bg-white"></div>
+            </div>
+            
+            <!-- Visual Novel Scene -->
+            <div class="aspect-video relative bg-gradient-to-br from-blue-600 via-blue-400 to-pink-200 flex items-end justify-center p-4">
+              <!-- Sun -->
+              <div class="absolute top-[14%] right-[12%] w-16 h-16 rounded-full bg-yellow-100 border-2 border-black"></div>
+              <!-- Hills -->
+              <div class="absolute left-[-5%] right-[-5%] bottom-0 h-[42%] bg-gray-800" style="clip-path: polygon(0 60%, 25% 20%, 55% 55%, 80% 10%, 100% 50%, 100% 100%, 0 100%)"></div>
+              
+              <!-- Hint -->
+              <div class="absolute top-3 left-3 bg-white text-black px-2 py-1 border-2 border-black rounded-lg font-mono font-bold text-xs shadow-brutalist">
+                click the text box
+              </div>
+              
+              <!-- Dialog Box -->
+              <div id="dlg" class="relative w-[92%] p-4 bg-black bg-opacity-90 text-white border-2 border-white rounded-lg min-h-[92px] text-lg md:text-xl lg:text-2xl leading-relaxed cursor-pointer">
+                <!-- Selection Border -->
+                <div class="absolute inset-[-6px] border-2 border-dashed border-blue-300 rounded-xl pointer-events-none"></div>
+                
+                <!-- Japanese Text -->
+                <div id="jp-text" class="absolute inset-0 p-4 flex items-center transition-opacity duration-300">
+                  今日はいい天気ですね。一緒に行きましょう。
+                </div>
+                
+                <!-- English Translation -->
+                <div id="en-text" class="absolute inset-0 p-4 flex items-center bg-blue-500 text-white rounded-lg font-bold opacity-0 transition-opacity duration-300">
+                  It's lovely weather today. Let's go together.
+                </div>
+                
+                <!-- Hidden spacer for layout -->
+                <span class="invisible">今日はいい天気ですね。一緒に行きましょう。</span>
+              </div>
+            </div>
+          </div>
+          <!-- Installation Panel -->
+          <Card variant="primary" class="pt-10 relative" id="install">
+            <span class="absolute top-[-17px] left-1/2 transform -translate-x-1/2 px-6 py-1 bg-white text-black border-2 border-black rounded-lg font-mono font-bold text-sm tracking-widest">
+              INSTALL
+            </span>
+            <p class="mb-3 text-white text-sm">Clone, run the installer, then fetch the Japanese models.</p>
+            
+            <CodeBlock code="git clone https://github.com/remsysc/waytrans.git" />
+            <CodeBlock code="cd waytrans && ./install.sh" />
+            <CodeBlock code="waytrans --setup-models" />
+            
+            <p class="mt-1 text-white text-sm">Or with pip: <span class="font-mono">pip install --user .</span></p>
+            
+            <div class="flex flex-wrap gap-2 mt-2">
+              <Button href="https://github.com/remsysc/waytrans" target="_blank" rel="noopener">
+                View on GitHub
+              </Button>
+              <Button href="/docs#keybindings">
+                Keybindings
+              </Button>
+            </div>
+          </Card>
+        </div>
+        <!-- How Section -->
+        <section id="how" class="py-14">
+          <h2 class="text-3xl md:text-4xl lg:text-5xl mb-7 tracking-tight uppercase font-bold">Drag. Read. Dismiss.</h2>
+          <div class="flex flex-wrap gap-4 items-stretch">
+            <div class="flex-1 min-w-[150px] p-4 border-2 border-black shadow-brutalist rounded-lg bg-white relative">
+              <h3 class="mb-2 font-mono font-bold text-lg">slurp</h3>
+              <p class="m-0 text-sm leading-tight">Drag a box around the text.</p>
+            </div>
+            <div class="flex-1 min-w-[150px] p-4 border-2 border-black shadow-brutalist rounded-lg bg-white relative">
+              <h3 class="mb-2 font-mono font-bold text-lg">grim</h3>
+              <p class="m-0 text-sm leading-tight">Captures just that region.</p>
+            </div>
+            <div class="flex-1 min-w-[150px] p-4 border-2 border-black shadow-brutalist rounded-lg bg-white relative">
+              <h3 class="mb-2 font-mono font-bold text-lg">ImageMagick</h3>
+              <p class="m-0 text-sm leading-tight">Optional 2x upscale and grayscale.</p>
+            </div>
+            <div class="flex-1 min-w-[150px] p-4 border-2 border-black shadow-brutalist rounded-lg bg-white relative">
+              <h3 class="mb-2 font-mono font-bold text-lg">Tesseract</h3>
+              <p class="m-0 text-sm leading-tight">OCR with horizontal and vertical CJK.</p>
+            </div>
+            <div class="flex-1 min-w-[150px] p-4 border-2 border-black shadow-brutalist rounded-lg bg-white relative">
+              <h3 class="mb-2 font-mono font-bold text-lg">translate-shell</h3>
+              <p class="m-0 text-sm leading-tight">Translates the extracted text.</p>
+            </div>
+            <div class="flex-1 min-w-[150px] p-4 border-2 border-black shadow-brutalist rounded-lg bg-blue-500 text-white relative">
+              <h3 class="mb-2 font-mono font-bold text-lg">Overlay</h3>
+              <p class="m-0 text-sm leading-tight">Drawn over the original via GtkLayerShell. Also copied with wl-copy.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="py-14">
+          <h2 class="text-3xl md:text-4xl lg:text-5xl mb-7 tracking-tight uppercase font-bold">Built for immersion</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <FeatureCard title="Live translation" variant="accent">
+              Toggle it on and waytrans watches a dialogue box or manga panel, spots new text by perceptual hashing, and updates in place.
+            </FeatureCard>
+            
+            <FeatureCard title="Click-through">
+              In live mode the overlay passes mouse input through, so you keep clicking to advance dialogue.
+            </FeatureCard>
+            
+            <FeatureCard title="In-place overlay" variant="accent">
+              Anchored to the exact screen coordinates you selected, multi-monitor aware.
+            </FeatureCard>
+            
+            <FeatureCard title="Japanese and CJK">
+              Handles <span class="font-mono">jpn+jpn_vert</span>, strips OCR spacing artifacts, and supports tessdata_best models.
+            </FeatureCard>
+            
+            <FeatureCard title="Lightweight" variant="accent">
+              Native Wayland tools. No Electron, no web runtime.
+            </FeatureCard>
+            
+            <FeatureCard title="Graceful fallback">
+              Without Layer-Shell it falls back to <span class="font-mono">notify-send</span>. Click or press Esc to dismiss.
+            </FeatureCard>
+          </div>
+        </section>
+        <!-- Keybindings Section -->
+        <section id="keys" class="py-14">
+          <h2 class="text-3xl md:text-4xl lg:text-5xl mb-7 tracking-tight uppercase font-bold">Bind it. Use it.</h2>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-7">
+            <!-- Compositor Config -->
+            <div>
+              <div class="flex gap-2 mb-4 flex-wrap">
+                <button role="tab" aria-selected="true" data-tab="hypr" 
+                        class="font-bold text-sm px-4 py-2 border-2 border-black rounded-lg bg-blue-500 text-white cursor-pointer shadow-brutalist tab-btn">
+                  Hyprland
+                </button>
+                <button role="tab" aria-selected="false" data-tab="sway" 
+                        class="font-bold text-sm px-4 py-2 border-2 border-black rounded-lg bg-white text-black cursor-pointer shadow-brutalist tab-btn">
+                  Sway
+                </button>
+                <button role="tab" aria-selected="false" data-tab="river" 
+                        class="font-bold text-sm px-4 py-2 border-2 border-black rounded-lg bg-white text-black cursor-pointer shadow-brutalist tab-btn">
+                  River
+                </button>
+              </div>
+              <div class="border-2 border-black shadow-brutalist rounded-lg p-0 bg-white overflow-hidden">
+                <pre id="config-code" class="m-0 p-4 overflow-x-auto font-mono text-sm text-black leading-relaxed bg-white"># ~/.config/hypr/hyprland.conf
+bind = SUPER_ALT, J, exec, waytrans -s ja -t en
+bind = SUPER_ALT, L, exec, waytrans --live -s ja -t en</pre>
+              </div>
+            </div>
+            
+            <!-- CLI Flags -->
+            <div>
+              <div class="mb-4">
+                <span class="inline-flex items-center gap-2 px-4 py-2 font-bold text-sm cursor-default text-black bg-white border-2 border-black shadow-brutalist rounded-lg">
+                  CLI flags
+                </span>
+              </div>
+              <div class="border-2 border-black shadow-brutalist rounded-lg overflow-hidden bg-white">
+                <table class="w-full border-collapse text-sm">
+                  <tr>
+                    <td class="px-4 py-2 border-b-2 border-black font-mono font-bold text-xs whitespace-nowrap bg-blue-50">-s / -t</td>
+                    <td class="px-4 py-2 border-b-2 border-black align-top">Source and target language (default ja → en)</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-2 border-b-2 border-black font-mono font-bold text-xs whitespace-nowrap bg-blue-50">-l, --live</td>
+                    <td class="px-4 py-2 border-b-2 border-black align-top">Toggle live translation</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-2 border-b-2 border-black font-mono font-bold text-xs whitespace-nowrap bg-blue-50">--timeout</td>
+                    <td class="px-4 py-2 border-b-2 border-black align-top">Overlay seconds, 0 stays until clicked</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-2 border-b-2 border-black font-mono font-bold text-xs whitespace-nowrap bg-blue-50">--psm</td>
+                    <td class="px-4 py-2 border-b-2 border-black align-top">Tesseract segmentation mode</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-2 border-b-2 border-black font-mono font-bold text-xs whitespace-nowrap bg-blue-50">--no-overlay</td>
+                    <td class="px-4 py-2 border-b-2 border-black align-top">Notification only</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-2 border-b-2 border-black font-mono font-bold text-xs whitespace-nowrap bg-blue-50">--no-clipboard</td>
+                    <td class="px-4 py-2 border-b-2 border-black align-top">Skip wl-copy</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-2 font-mono font-bold text-xs whitespace-nowrap bg-blue-50">--setup-models</td>
+                    <td class="px-4 py-2 align-top">Download JP OCR models</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="py-14">
+          <Card variant="primary" class="text-center py-10 px-5">
+            <h2 class="text-3xl md:text-4xl lg:text-5xl mb-4 tracking-tight uppercase font-bold">Read it in your language</h2>
+            <Button href="https://github.com/remsysc/waytrans" target="_blank" rel="noopener">
+              Get waytrans on GitHub →
+            </Button>
+          </Card>
+        </section>
+      </main>
+      <!-- Footer -->
+      <footer class="border-t-2 border-black bg-white py-6 text-sm">
+        <div class="max-w-6xl mx-auto px-5 flex flex-wrap gap-4 justify-between">
+          <span>waytrans · MIT License · © 2026 Rem</span>
+          <span class="font-mono">needs: grim · slurp · tesseract · translate-shell · wl-clipboard · gtk-layer-shell</span>
+        </div>
+      </footer>
+    </div>
+
+
+
+    <!-- Client-side JavaScript -->
+    <script>
+      // Demo interaction
+      const dlg = document.getElementById('dlg');
+      const hint = document.querySelector('.absolute.top-3.left-3');
+      const jpText = document.getElementById('jp-text');
+      const enText = document.getElementById('en-text');
+      
+      function toggleTranslation() {
+        const isTranslated = enText.classList.contains('opacity-100');
+        if (isTranslated) {
+          enText.classList.remove('opacity-100');
+          enText.classList.add('opacity-0');
+          jpText.classList.remove('opacity-0');
+          jpText.classList.add('opacity-100');
+          hint.textContent = 'click the text box';
+        } else {
+          jpText.classList.remove('opacity-100');
+          jpText.classList.add('opacity-0');
+          enText.classList.remove('opacity-0');
+          enText.classList.add('opacity-100');
+          hint.textContent = 'translated · click to dismiss';
+        }
+      }
+      
+      dlg?.addEventListener('click', toggleTranslation);
+      dlg?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+          e.preventDefault();
+          toggleTranslation();
+        }
+      });
+
+      // Copy functionality
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const textToCopy = btn.getAttribute('data-copy');
+          try {
+            await navigator.clipboard.writeText(textToCopy);
+            btn.textContent = 'COPIED';
+          } catch (e) {
+            btn.textContent = 'PRESS CTRL+C';
+          }
+          setTimeout(() => btn.textContent = 'COPY', 1400);
+        });
+      });
+
+      // Tab switching
+      const configs = {
+        hypr: '# ~/.config/hypr/hyprland.conf\nbind = SUPER_ALT, J, exec, waytrans -s ja -t en\nbind = SUPER_ALT, L, exec, waytrans --live -s ja -t en',
+        sway: '# ~/.config/sway/config\nbindsym $mod+Mod1+j exec waytrans -s ja -t en\nbindsym $mod+Mod1+l exec waytrans --live -s ja -t en',
+        river: '# ~/.config/river/init\nriverctl map normal Super+Alt J spawn "waytrans -s ja -t en"\nriverctl map normal Super+Alt L spawn "waytrans --live -s ja -t en"'
+      };
+      
+      const codeElement = document.getElementById('config-code');
+      
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = btn.getAttribute('data-tab');
+          
+          // Update active states
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+            if (b === btn) {
+              b.classList.add('bg-blue-500', 'text-white');
+              b.classList.remove('bg-white', 'text-black');
+            } else {
+              b.classList.remove('bg-blue-500', 'text-white');
+              b.classList.add('bg-white', 'text-black');
+            }
+          });
+          
+          // Update code content
+          if (codeElement && configs[tab]) {
+            codeElement.textContent = configs[tab];
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
