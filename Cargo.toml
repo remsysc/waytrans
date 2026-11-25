@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/waytrans-core",
+    "crates/waytrans-ocr",
+    "crates/waytrans-wayland",
+    "crates/waytrans-windows",
+    "crates/waytrans-cli",
+]
+
+[workspace.package]
+version = "1.0.0-alpha.1"
+edition = "2021"
+license = "MIT"
+authors = ["Rem"]
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ureq = { version = "2.10", features = ["json"] }
+regex = "1.11"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dirs = "5.0"
+once_cell = "1.20"
+image = { version = "0.25", default-features = false, features = ["png", "pnm"] }
+libloading = "0.8"
+clap = { version = "4.5", features = ["derive", "env"] }
+ctrlc = "3.4"

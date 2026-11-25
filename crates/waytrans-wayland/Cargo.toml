@@ -1,0 +1,19 @@
+[package]
+name = "waytrans-wayland"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+waytrans-core = { path = "../waytrans-core" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+smithay-client-toolkit = "0.19"
+wayland-client = "0.31"
+tiny-skia = "0.11"
+cosmic-text = "0.12"
