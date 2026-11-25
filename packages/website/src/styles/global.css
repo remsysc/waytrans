@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/* Custom brutalist shadow utilities */
+.shadow-brutalist {
+  box-shadow: 4px 4px 0 theme(colors.black);
+}
+
+.shadow-brutalist-sm {
+  box-shadow: 1px 1px 0 theme(colors.black);
+}
+
+/* Grid background pattern */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(theme(colors.gray.200) 1px, transparent 1px),
+    linear-gradient(90deg, theme(colors.gray.200) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Font family overrides */
+body {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.font-mono {
+  font-family: 'Space Mono', ui-monospace, monospace;
+}
+
+/* Docs sidebar improvements */
+.docs-page #sidebar {
+  height: 100vh;
+  position: fixed;
+  top: 0;
+}
+
+@media (max-width: 767px) {
+  /* Hide scrollbar on mobile */
+  .docs-page #sidebar .overflow-y-auto {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  
+  .docs-page #sidebar .overflow-y-auto::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+}
+
+/* Desktop sidebar positioning */
+@media (min-width: 768px) {
+  .docs-page #sidebar {
+    position: fixed;
+    top: 4rem; /* Height of navbar (64px / 16 = 4rem) */
+    bottom: 0;
+    height: calc(100vh - 4rem);
+  }
+  
+  /* Add left margin to main content to account for sidebar width on docs page only */
+  .docs-page main {
+    margin-left: 20rem; /* 320px for lg:w-80 */
+  }
+}
+
+/* Custom scrollbar styling for desktop */
+@media (min-width: 768px) {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+  }
+}

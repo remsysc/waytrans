@@ -1,0 +1,22 @@
+---
+export interface Props {
+  code: string;
+  copyable?: boolean;
+}
+
+const { code, copyable = true } = Astro.props;
+---
+
+<div class="flex items-stretch mb-3 border-2 border-black rounded-lg bg-white shadow-brutalist overflow-hidden">
+  <code class="flex-1 px-3 py-3 font-mono text-sm text-black overflow-x-auto whitespace-nowrap">
+    {code}
+  </code>
+  {copyable && (
+    <button 
+      data-copy={code}
+      class="border-0 border-l-2 border-black bg-blue-100 text-black font-mono font-bold text-xs px-4 cursor-pointer hover:bg-blue-200 copy-btn"
+    >
+      COPY
+    </button>
+  )}
+</div>

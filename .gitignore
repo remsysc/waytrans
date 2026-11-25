@@ -1,3 +1,7 @@
 /target/
+/tmp/
+dist/
+build/
 *.png
+!packages/website/public/images/*.png
 !tests/fixtures/.gitkeep
