@@ -1,0 +1,28 @@
+[package]
+name = "waytrans-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+build = "build.rs"
+
+[[bin]]
+name = "waytrans"
+path = "src/main.rs"
+
+[dependencies]
+waytrans-core = { path = "../waytrans-core" }
+waytrans-ocr = { path = "../waytrans-ocr" }
+clap.workspace = true
+ctrlc.workspace = true
+dirs.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+waytrans-wayland = { path = "../waytrans-wayland" }
+libc = "0.2"
+ksni = "0.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+waytrans-windows = { path = "../waytrans-windows" }

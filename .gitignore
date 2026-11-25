@@ -1,11 +1,7 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
+/target/
+/tmp/
 dist/
 build/
-.pytest_cache/
-.coverage
-/tmp/
 *.png
 !packages/website/public/images/*.png
+!tests/fixtures/.gitkeep
